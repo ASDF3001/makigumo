@@ -1,0 +1,34 @@
+{
+  "items": {
+    "lucky_cloud": {
+      "name": "幸運の雲",
+      "description": "ギャンブルの勝率がほんのり上がる、ふわふわの雲。持っているだけで効果発動！",
+      "probability_bonus": 0.15,
+      "price": 500
+    },
+    "lucky_cloud_premium": {
+      "name": "黄金の幸運の雲",
+      "description": "幸運の雲の上位版。持っているだけでギャンブルがかなり有利に！",
+      "probability_bonus": 0.25,
+      "price": 1500
+    },
+    "coffee": {
+      "name": "まきぐも特製コーヒー",
+      "description": "まきぐもが淹れてくれたコーヒー。（/use で飲む）",
+      "probability_bonus": 0,
+      "price": 100
+    },
+    "cheat_note": {
+      "name": "カンニングペーパー",
+      "description": "雑学が詰まったメモ。（/use で消費すると小遣いゲット？）",
+      "probability_bonus": 0,
+      "price": 200
+    },
+    "apology_parfait": {
+      "name": "お詫びの高級パフェ",
+      "description": "まきぐもの大好物。（/use で渡すと機嫌が直って1000pt獲得！）",
+      "probability_bonus": 0,
+      "price": 3000
+    }
+  }
+}

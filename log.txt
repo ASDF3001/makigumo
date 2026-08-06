@@ -1,0 +1,31 @@
+=== まきぐも 稼働状況ログ (2026-08-06 22:35:01) ===
+導入サーバー数: 27
+総監視ユーザー数: 777
+----------------------------------------
+- 無　　法　　地　　帯 (ID: 1306565491581521951) | 鯖主: 𝙺Ꭿ𝖓𝗶𝕜𝐈ᑎⓉ🅥 | 80人 | 招待: https://discord.gg/txbFPMn46h
+- からすみ (ID: 1403384045814943864) | 鯖主: 🍋れもん🍋 | 3人 | 招待: https://discord.gg/QE9bjuhrrV
+- 無下限もってるかもしれないバニラのサーバー (ID: 1409098499013742624) | 鯖主: バニラ | 8人 | 招待: https://discord.gg/m8CAEf2RRc
+- 那依の鯖 (ID: 1455896144671408284) | 鯖主: ¸Susur0ღ | 11人 | 招待: https://discord.gg/Ewz9jNjXbs
+- えんぷ鯖 (ID: 1484430960241148066) | 鯖主: えんぷてい | 22人 | 招待: https://discord.gg/BSaa5AFdk7
+- SFBRサーバー (ID: 1485225435125121094) | 鯖主: ダニエル（なんでこうなったんやろ） | 18人 | 招待: https://discord.gg/4f5HBZeGsC
+- まきねこ=わらび＝たんこぶ=三重王国 (ID: 1486372251438813406) | 鯖主: まきねこ | 77人 | 招待: 取得不可
+- 新 かぜさば (ID: 1491151651006976222) | 鯖主: かぜです！ | 41人 | 招待: 取得不可
+- ディスコードのゲームやるぞお (ID: 1494659095675015321) | 鯖主: kkk | 2人 | 招待: https://discord.gg/99nq6XmTcz
+- メイン|しゅん鯖 (ID: 1495719695394013215) | 鯖主: しゅん鯖主 | 57人 | 招待: https://discord.gg/jJGXApDQDP
+- 真・HENTAIの集い (ID: 1502512423133773957) | 鯖主: yuto | 23人 | 招待: https://discord.gg/YpMRXkP69m
+- あやそんスラム街 (ID: 1504449209326370979) | 鯖主: うら反社 | 63人 | 招待: https://discord.gg/K36y23tdmR
+- 日本的エロサーバー (ID: 1505526536227524698) | 鯖主: スーパーマグロ | 89人 | 招待: https://discord.gg/S4BU2kX7JR
+- botの巣窟 (ID: 1512033578467332176) | 鯖主: 緑熊 | 16人 | 招待: https://discord.gg/JJBZzdYm2K
+- BOT Console (ID: 1513120387683323914) | 鯖主: ADMIN | 10人 | 招待: https://discord.gg/Yc8ckzWUVw
+- 魚介類の踊り食い鯖 (ID: 1513471510159949915) | 鯖主: ほた | 29人 | 招待: https://discord.gg/2ATbWa3ZHW
+- 正露丸 (ID: 1513893004878811186) | 鯖主: やますけ🏳️ | 13人 | 招待: https://discord.gg/2E2gvn6Qbj
+- まきぐもぼっと公式 (ID: 1513898500256043139) | 鯖主: ASDF_yuto0926 | 18人 | 招待: https://discord.gg/c3BfmNYdZY
+- おっと？ (ID: 1514821064801255505) | 鯖主: きいはむ | 3人 | 招待: https://discord.gg/bZGcepHN6B
+- dogtailのサーバー (ID: 1515347127058956408) | 鯖主: dogtail | 2人 | 招待: https://discord.gg/mwuM4sdRxd
+- さーばー (ID: 1515635269095653477) | 鯖主: ⚠️ほぼみません⚠️ | 130人 | 招待: https://discord.gg/86GHZ4WHXw
+- ディスコードの魔境 (ID: 1516708548393046016) | 鯖主: きのこもち | 35人 | 招待: https://discord.gg/qZh6GfW9Ry
+- NEW (ID: 1521860049876815893) | 鯖主: ARATA | 3人 | 招待: https://discord.gg/8QTdcyxEPK
+- テストサーバー (ID: 1527340275322851358) | 鯖主: ヴィラ | 5人 | 招待: https://discord.gg/93TDTR6wvq
+- エース上等兵のサーバー (ID: 1527905055355961454) | 鯖主: エース上等兵 | 3人 | 招待: https://discord.gg/DSr5rV4PuC
+- botテスト (ID: 1531247465997533305) | 鯖主: れむ | 2人 | 招待: https://discord.gg/45dgzruhrw
+- ほたて信仰会 (ID: 1532732759238508544) | 鯖主: ほた | 14人 | 招待: https://discord.gg/XjjqRBPYMH
