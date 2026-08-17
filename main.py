@@ -59,6 +59,8 @@ class MakigumoBot(commands.AutoShardedBot):
                 except Exception:
                     pass
             
+            # Levelテーブル初期化
+            c.execute("CREATE TABLE IF NOT EXISTS levels (user_id TEXT PRIMARY KEY, xp INTEGER, level INTEGER)")
             conn.commit()
             
             # SQLiteから読み込み
@@ -72,6 +74,10 @@ class MakigumoBot(commands.AutoShardedBot):
                     self.channel_settings[row[0]] = json.loads(row[1])
                 except Exception:
                     pass
+            
+            self.levels = {}
+            for row in c.execute("SELECT user_id, xp, level FROM levels"):
+                self.levels[row[0]] = {"xp": row[1], "level": row[2]}
 
         if os.path.exists(SHOP_FILE):
             try:
@@ -92,6 +98,9 @@ class MakigumoBot(commands.AutoShardedBot):
             c = conn.cursor()
             for uid, data in self.economy.items():
                 c.execute("INSERT OR REPLACE INTO economy (user_id, data) VALUES (?, ?)", (uid, json.dumps(data, ensure_ascii=False)))
+            if hasattr(self, 'levels'):
+                for uid, data in self.levels.items():
+                    c.execute("INSERT OR REPLACE INTO levels (user_id, xp, level) VALUES (?, ?, ?)", (uid, data["xp"], data["level"]))
             conn.commit()
 
     def mark_economy_dirty(self):
@@ -165,7 +174,7 @@ class MakigumoBot(commands.AutoShardedBot):
 
     async def setup_hook(self):
         # cogsフォルダ内の各ファイルを読み込む
-        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai']:
+        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling']:
             try:
                 await self.load_extension(cog)
                 print(f"✅ {cog} の読み込みに成功しました")

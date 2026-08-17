@@ -83,6 +83,20 @@ class Events(commands.Cog):
             self.bot.is_economy_dirty = False
 
     @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if member.bot: return
+        
+        # VCに参加した時
+        if before.channel is None and after.channel is not None:
+            # 1人だけの時（自分が入って1人＝誰もいないVCに入った）
+            if len(after.channel.members) == 1:
+                try:
+                    # Voice Channel付属のテキストチャットへ送信
+                    await after.channel.send(f"「{member.mention}さん、こんなところで1人で何やってるんですか…？ ちゃんと監視してますからね」")
+                except Exception:
+                    pass
+
+    @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
