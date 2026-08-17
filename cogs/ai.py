@@ -28,7 +28,7 @@ class AI(commands.Cog):
             # APIキーのローテーション
             key = random.choice(self.api_keys)
             genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=self.system_instruction)
+            model = genai.GenerativeModel('gemini-3.5-flash-lite', system_instruction=self.system_instruction)
             
             user_id = str(interaction.user.id)
             if user_id not in self.histories:
