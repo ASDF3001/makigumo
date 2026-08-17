@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  makigumo:
+    build: .
+    container_name: makigumo_bot
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+    env_file:
+      - .env

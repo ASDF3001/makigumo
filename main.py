@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import json
+import sqlite3
 import os
 import random
 from dotenv import load_dotenv
@@ -32,19 +33,45 @@ class MakigumoBot(commands.AutoShardedBot):
         self.load_all_lines_to_memory()
 
     def load_settings(self):
-        if os.path.exists(SETTING_FILE):
-            try:
-                with open(SETTING_FILE, 'r', encoding='utf-8') as f:
-                    self.channel_settings = json.load(f)
-            except Exception:
-                self.channel_settings = {}
-
-        if os.path.exists(ECONOMY_FILE):
-            try:
-                with open(ECONOMY_FILE, 'r', encoding='utf-8') as f:
-                    self.economy = json.load(f)
-            except Exception:
-                self.economy = {}
+        with sqlite3.connect("database.db") as conn:
+            c = conn.cursor()
+            c.execute("CREATE TABLE IF NOT EXISTS economy (user_id TEXT PRIMARY KEY, data TEXT)")
+            c.execute("CREATE TABLE IF NOT EXISTS channel_settings (guild_id TEXT PRIMARY KEY, channels TEXT)")
+            
+            # JSONからの移行処理 (初回のみ)
+            if os.path.exists(ECONOMY_FILE) and os.path.getsize(ECONOMY_FILE) > 0:
+                try:
+                    with open(ECONOMY_FILE, 'r', encoding='utf-8') as f:
+                        old_eco = json.load(f)
+                    for uid, data in old_eco.items():
+                        c.execute("INSERT OR IGNORE INTO economy (user_id, data) VALUES (?, ?)", (uid, json.dumps(data, ensure_ascii=False)))
+                    os.rename(ECONOMY_FILE, ECONOMY_FILE + ".bak")
+                except Exception as e:
+                    print(f"Economy JSON migration failed: {e}")
+            
+            if os.path.exists(SETTING_FILE) and os.path.getsize(SETTING_FILE) > 0:
+                try:
+                    with open(SETTING_FILE, 'r', encoding='utf-8') as f:
+                        old_set = json.load(f)
+                    for gid, data in old_set.items():
+                        c.execute("INSERT OR IGNORE INTO channel_settings (guild_id, channels) VALUES (?, ?)", (gid, json.dumps(data, ensure_ascii=False)))
+                    os.rename(SETTING_FILE, SETTING_FILE + ".bak")
+                except Exception:
+                    pass
+            
+            conn.commit()
+            
+            # SQLiteから読み込み
+            for row in c.execute("SELECT user_id, data FROM economy"):
+                try:
+                    self.economy[row[0]] = json.loads(row[1])
+                except Exception:
+                    pass
+            for row in c.execute("SELECT guild_id, channels FROM channel_settings"):
+                try:
+                    self.channel_settings[row[0]] = json.loads(row[1])
+                except Exception:
+                    pass
 
         if os.path.exists(SHOP_FILE):
             try:
@@ -54,12 +81,18 @@ class MakigumoBot(commands.AutoShardedBot):
                 self.shop_items = {}
 
     def save_settings(self):
-        with open(SETTING_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.channel_settings, f, ensure_ascii=False, indent=4)
+        with sqlite3.connect("database.db") as conn:
+            c = conn.cursor()
+            for gid, channels in self.channel_settings.items():
+                c.execute("INSERT OR REPLACE INTO channel_settings (guild_id, channels) VALUES (?, ?)", (gid, json.dumps(channels, ensure_ascii=False)))
+            conn.commit()
 
     def _save_economy_sync_task(self):
-        with open(ECONOMY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.economy, f, ensure_ascii=False, indent=4)
+        with sqlite3.connect("database.db") as conn:
+            c = conn.cursor()
+            for uid, data in self.economy.items():
+                c.execute("INSERT OR REPLACE INTO economy (user_id, data) VALUES (?, ?)", (uid, json.dumps(data, ensure_ascii=False)))
+            conn.commit()
 
     def mark_economy_dirty(self):
         self.is_economy_dirty = True

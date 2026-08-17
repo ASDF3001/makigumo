@@ -87,20 +87,26 @@ class Events(commands.Cog):
         if message.author.bot:
             return
 
-        if message.author.id == 1454396387818082439 and message.content == "!leave":
-            if message.guild:
-                try:
-                    await message.channel.send("管理者により退出させられました。")
-                    await message.guild.leave()
-                except Exception:
-                    pass
+        admin_id = os.getenv('ADMIN_USER_ID')
+        
+        if message.content == "!leave":
+            app_info = await self.bot.application_info()
+            is_admin = (admin_id and str(message.author.id) == admin_id) or (message.author.id == app_info.owner.id)
+            if is_admin:
+                if message.guild:
+                    try:
+                        await message.channel.send("管理者により退出させられました。")
+                        await message.guild.leave()
+                    except Exception:
+                        pass
             return
 
         if message.content == "!wakarase":
             shutdown_id = os.getenv('SHUTDOWN_CHANNEL_ID')
             if shutdown_id and str(message.channel.id) == shutdown_id:
                 app_info = await self.bot.application_info()
-                if message.author.id == app_info.owner.id:
+                is_admin = (admin_id and str(message.author.id) == admin_id) or (message.author.id == app_info.owner.id)
+                if is_admin:
                     announcement = "【☁️ まきぐもちゃんからのお知らせ】\nただいまよりアップデートのため一時的にBotをシャットダウンします。"
                     for guild in self.bot.guilds:
                         target_channel = None
