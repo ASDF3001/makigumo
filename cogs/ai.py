@@ -49,7 +49,7 @@ class AI(commands.Cog):
         user_msg = f"{interaction.user.display_name}からのメッセージ: {メッセージ}"
         
         reply = None
-        last_error = None
+        last_error = Exception("APIから有効な応答が得られませんでした。")
 
         if HAS_NEW_GENAI:
             client = genai.Client(api_key=key)
@@ -71,8 +71,8 @@ class AI(commands.Cog):
                         history=past_contents
                     )
                     response = await asyncio.to_thread(chat.send_message, user_msg)
-                    reply = response.text
-                    if reply:
+                    if response and response.text:
+                        reply = response.text
                         break
                 except Exception as e:
                     last_error = e
@@ -84,8 +84,8 @@ class AI(commands.Cog):
                     model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
                     temp_history = history + [{"role": "user", "parts": [user_msg]}]
                     response = await asyncio.to_thread(model.generate_content, temp_history)
-                    reply = response.text
-                    if reply:
+                    if response and response.text:
+                        reply = response.text
                         break
                 except Exception as e:
                     last_error = e
@@ -103,8 +103,8 @@ class AI(commands.Cog):
             await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n☁️ **まきぐも**: {reply}")
         else:
             err_msg = str(last_error)
-            if "User location is not supported" in err_msg:
-                await interaction.followup.send("「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（User location not supported）」")
+            if "User location is not supported" in err_msg or "FAILED_PRECONDITION" in err_msg:
+                await interaction.followup.send("「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（IP制限エラー）」")
             else:
                 await interaction.followup.send(f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」")
 
