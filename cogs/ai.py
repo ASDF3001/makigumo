@@ -31,8 +31,14 @@ class AI(commands.Cog):
             
         await interaction.response.defer()
         
-        # モデル候補（新しいモデルから順にフォールバック）
-        models_to_try = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash']
+        # モデル候補（より確実な最新モデル名に更新、1.5は廃止済みのため除外）
+        models_to_try = [
+            'gemini-3.5-flash-lite', 
+            'gemini-3.5-flash',
+            'gemini-3.0-flash', 
+            'gemini-2.5-flash', 
+            'gemini-2.0-flash'
+        ]
         
         key = random.choice(self.api_keys)
         user_id = str(interaction.user.id)
@@ -57,7 +63,6 @@ class AI(commands.Cog):
             
             for model_name in models_to_try:
                 try:
-                    # Chat APIを使用することでAFC警告を解消
                     chat = client.chats.create(
                         model=model_name,
                         config=types.GenerateContentConfig(
@@ -65,7 +70,6 @@ class AI(commands.Cog):
                         ),
                         history=past_contents
                     )
-                    # API通信でイベントループをブロックしないように to_thread で実行
                     response = await asyncio.to_thread(chat.send_message, user_msg)
                     reply = response.text
                     if reply:
@@ -79,7 +83,6 @@ class AI(commands.Cog):
                     legacy_genai.configure(api_key=key)
                     model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
                     temp_history = history + [{"role": "user", "parts": [user_msg]}]
-                    # API通信でイベントループをブロックしないように to_thread で実行
                     response = await asyncio.to_thread(model.generate_content, temp_history)
                     reply = response.text
                     if reply:
@@ -104,6 +107,33 @@ class AI(commands.Cog):
                 await interaction.followup.send("「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（User location not supported）」")
             else:
                 await interaction.followup.send(f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」")
+
+    @commands.command(name="models")
+    async def check_models(self, ctx):
+        """利用可能なモデルID一覧を確認する管理者コマンド"""
+        admin_id = os.getenv('ADMIN_USER_ID')
+        app_info = await self.bot.application_info()
+        is_admin = (admin_id and str(ctx.author.id) == admin_id) or (ctx.author.id == app_info.owner.id)
+        
+        if not is_admin:
+            return
+            
+        if not self.api_keys:
+            await ctx.send("APIキーが設定されていません。")
+            return
+            
+        msg = await ctx.send("利用可能なモデルを検索中...")
+        try:
+            client = genai.Client(api_key=self.api_keys[0])
+            available = []
+            for m in client.models.list():
+                if 'flash' in m.name.lower():
+                    available.append(m.name)
+            
+            res = "利用可能なFlash系モデルID一覧:\n" + "\n".join(available[:30])
+            await msg.edit(content=f"```\n{res}\n```")
+        except Exception as e:
+            await msg.edit(content=f"モデルの取得に失敗しました: {e}")
 
 async def setup(bot):
     api_keys = []
