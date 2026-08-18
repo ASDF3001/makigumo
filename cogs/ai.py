@@ -30,48 +30,64 @@ class AI(commands.Cog):
             
         await interaction.response.defer()
         
-        try:
-            key = random.choice(self.api_keys)
-            user_id = str(interaction.user.id)
-            if user_id not in self.histories:
-                self.histories[user_id] = []
-                
-            history = self.histories[user_id]
-            user_msg = f"{interaction.user.display_name}からのメッセージ: {メッセージ}"
+        # モデル候補（新しいモデルから順にフォールバック）
+        models_to_try = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash']
+        
+        key = random.choice(self.api_keys)
+        user_id = str(interaction.user.id)
+        if user_id not in self.histories:
+            self.histories[user_id] = []
             
-            if HAS_NEW_GENAI:
-                client = genai.Client(api_key=key)
-                
-                contents = []
-                for item in history:
-                    contents.append(types.Content(
-                        role=item["role"],
-                        parts=[types.Part.from_text(text=item["parts"][0])]
-                    ))
-                contents.append(types.Content(
-                    role="user",
-                    parts=[types.Part.from_text(text=user_msg)]
+        history = self.histories[user_id]
+        user_msg = f"{interaction.user.display_name}からのメッセージ: {メッセージ}"
+        
+        reply = None
+        last_error = None
+
+        if HAS_NEW_GENAI:
+            client = genai.Client(api_key=key)
+            
+            past_contents = []
+            for item in history:
+                past_contents.append(types.Content(
+                    role=item["role"],
+                    parts=[types.Part.from_text(text=item["parts"][0])]
                 ))
-                
-                response = client.models.generate_content(
-                    model='gemini-3.5-flash-lite',
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=self.system_instruction
-                    )
-                )
-                reply = response.text
-                
-                history.append({"role": "user", "parts": [user_msg]})
-                history.append({"role": "model", "parts": [reply]})
-            else:
-                legacy_genai.configure(api_key=key)
-                model = legacy_genai.GenerativeModel('gemini-3.5-flash-lite', system_instruction=self.system_instruction)
-                history.append({"role": "user", "parts": [user_msg]})
-                response = model.generate_content(history)
-                reply = response.text
-                history.append({"role": "model", "parts": [reply]})
             
+            for model_name in models_to_try:
+                try:
+                    # Chat APIを使用することでAFC警告を解消
+                    chat = client.chats.create(
+                        model=model_name,
+                        config=types.GenerateContentConfig(
+                            system_instruction=self.system_instruction
+                        ),
+                        history=past_contents
+                    )
+                    response = chat.send_message(user_msg)
+                    reply = response.text
+                    if reply:
+                        break
+                except Exception as e:
+                    last_error = e
+                    continue
+        else:
+            for model_name in models_to_try:
+                try:
+                    legacy_genai.configure(api_key=key)
+                    model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
+                    temp_history = history + [{"role": "user", "parts": [user_msg]}]
+                    response = model.generate_content(temp_history)
+                    reply = response.text
+                    if reply:
+                        break
+                except Exception as e:
+                    last_error = e
+                    continue
+
+        if reply:
+            history.append({"role": "user", "parts": [user_msg]})
+            history.append({"role": "model", "parts": [reply]})
             if len(history) > 10:
                 self.histories[user_id] = history[-10:]
             
@@ -79,8 +95,12 @@ class AI(commands.Cog):
                 reply = reply[:1900] + "…（ちょっと長すぎるので切りました！）"
             
             await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n☁️ **まきぐも**: {reply}")
-        except Exception as e:
-            await interaction.followup.send(f"「…っ、頭が痛いです…（エラーが発生しました: {e}）」")
+        else:
+            err_msg = str(last_error)
+            if "User location is not supported" in err_msg:
+                await interaction.followup.send("「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（User location not supported）」")
+            else:
+                await interaction.followup.send(f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」")
 
 async def setup(bot):
     api_keys = []
