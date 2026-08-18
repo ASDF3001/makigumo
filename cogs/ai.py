@@ -5,10 +5,16 @@ import os
 import random
 
 try:
-    import google.generativeai as genai
-    HAS_GENAI = True
+    from google import genai
+    from google.genai import types
+    HAS_NEW_GENAI = True
 except ImportError:
-    HAS_GENAI = False
+    HAS_NEW_GENAI = False
+    try:
+        import google.generativeai as legacy_genai
+        HAS_LEGACY_GENAI = True
+    except ImportError:
+        HAS_LEGACY_GENAI = False
 
 class AI(commands.Cog):
     def __init__(self, bot, api_keys):
@@ -19,30 +25,53 @@ class AI(commands.Cog):
 
     @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（記憶あり）")
     async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
-        if not HAS_GENAI:
-            return await interaction.response.send_message("「AI機能を使うには `google-generativeai` ライブラリが必要です！」", ephemeral=True)
+        if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
+            return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
             
         await interaction.response.defer()
         
         try:
-            # APIキーのローテーション
             key = random.choice(self.api_keys)
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-3.5-flash-lite', system_instruction=self.system_instruction)
-            
             user_id = str(interaction.user.id)
             if user_id not in self.histories:
                 self.histories[user_id] = []
                 
             history = self.histories[user_id]
-            history.append({"role": "user", "parts": [f"{interaction.user.display_name}からのメッセージ: {メッセージ}"]})
+            user_msg = f"{interaction.user.display_name}からのメッセージ: {メッセージ}"
             
-            response = model.generate_content(history)
-            reply = response.text
+            if HAS_NEW_GENAI:
+                client = genai.Client(api_key=key)
+                
+                contents = []
+                for item in history:
+                    contents.append(types.Content(
+                        role=item["role"],
+                        parts=[types.Part.from_text(text=item["parts"][0])]
+                    ))
+                contents.append(types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=user_msg)]
+                ))
+                
+                response = client.models.generate_content(
+                    model='gemini-3.5-flash-lite',
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_instruction
+                    )
+                )
+                reply = response.text
+                
+                history.append({"role": "user", "parts": [user_msg]})
+                history.append({"role": "model", "parts": [reply]})
+            else:
+                legacy_genai.configure(api_key=key)
+                model = legacy_genai.GenerativeModel('gemini-3.5-flash-lite', system_instruction=self.system_instruction)
+                history.append({"role": "user", "parts": [user_msg]})
+                response = model.generate_content(history)
+                reply = response.text
+                history.append({"role": "model", "parts": [reply]})
             
-            history.append({"role": "model", "parts": [reply]})
-            
-            # 直近10件(5往復)のみ記憶してメモリを節約
             if len(history) > 10:
                 self.histories[user_id] = history[-10:]
             
@@ -55,13 +84,11 @@ class AI(commands.Cog):
 
 async def setup(bot):
     api_keys = []
-    # 最大10個までのAPIキーを読み込む
     for i in range(1, 11):
         k = os.getenv(f"GEMINI_API_KEY_{i}")
         if k:
             api_keys.append(k)
             
-    # APIキーが0個の場合はCogを登録しない（= /ai コマンドが消える）
     if not api_keys:
         print("GEMINI_API_KEY_* が設定されていないため、AI機能を無効化します。")
         return
