@@ -20,7 +20,14 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'ログイン成功: {self.bot.user.name} V14 (Gamble Ready)')
+        version = "V14"
+        update_dir = "update"
+        if os.path.exists(update_dir):
+            files = [f for f in os.listdir(update_dir) if f.endswith(".txt")]
+            if files:
+                files.sort(reverse=True)
+                version = files[0].replace('.txt', '')
+        print(f'ログイン成功: {self.bot.user.name} {version} (Gamble Ready)')
         await self.update_bot_status()
 
     async def save_server_count(self):
@@ -148,7 +155,13 @@ class Events(commands.Cog):
                 return
 
         triggered, filename = False, ""
-        if "おはよ" in message.content: filename, triggered = "ohayo.txt", True
+        if "まきぐそ" in message.content:
+            try:
+                await message.reply("「……は？ 誰がまきぐそですか！？ ふざけないでください！ 次そんなこと言ったら本当に許しませんからね！この変態ゴミカス！💢💢」")
+            except discord.Forbidden:
+                pass
+            return
+        elif "おはよ" in message.content: filename, triggered = "ohayo.txt", True
         elif "おやすみ" in message.content: filename, triggered = "oyasumi.txt", True
         elif "かわいい" in message.content or "可愛い" in message.content: filename, triggered = "kawaii.txt", True
         elif any(w in message.content for w in ["抜いた", "おなした", "オナした", "シコった", "しこった"]): filename, triggered = "nuita.txt", True

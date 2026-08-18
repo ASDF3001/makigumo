@@ -124,60 +124,72 @@ class Roleplay(commands.Cog):
 
     @app_commands.command(name="豆知識", description="まきぐもちゃんのヒミツの豆知識を披露します")
     async def mamechishiki(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"💡 **まきぐも豆知識**\n{self.bot.get_line('mamechishiki.txt')}")
+        await interaction.response.defer()
+        await interaction.followup.send(f"💡 **まきぐも豆知識**\n{self.bot.get_line('mamechishiki.txt')}")
 
     @app_commands.command(name="喘げ", description="まきぐもにちょっと色っぽい声を上げさせます")
     async def aege(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("aege.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("aege.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="おねだり", description="まきぐもがあなたにワガママを言います")
     async def onedari(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("onedari.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("onedari.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="添い寝", description="夜、まきぐもがあなたと一緒にベッドに入ります")
     async def soine(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("soine.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("soine.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="耳打ち", description="【あなただけにしか見えません】まきぐもが耳元でコッソリ囁きます……♡")
     async def mimiuchi(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("mimiuchi.txt").format(user=interaction.user.mention), ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send(self.bot.get_line("mimiuchi.txt").format(user=interaction.user.mention), ephemeral=True)
 
     @app_commands.command(name="罵倒", description="まきぐもがゴミを見るような目であなたを叱り飛ばします")
     async def batou(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("batou.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("batou.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="看病", description="風邪を引いたあなたを、まきぐもが看病します")
     async def kanbyou(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("kanbyou.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("kanbyou.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="嫉妬", description="他の子の話をしたあなたに、まきぐもが嫉妬します")
     async def shitto(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("shitto.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("shitto.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="お仕置き", description="変態なあなたに、まきぐもがお仕置きをします")
     async def oshioki(self, interaction: discord.Interaction):
-        await interaction.response.send_message(self.bot.get_line("oshioki.txt").format(user=interaction.user.mention))
+        await interaction.response.defer()
+        await interaction.followup.send(self.bot.get_line("oshioki.txt").format(user=interaction.user.mention))
 
     @app_commands.command(name="ガチャ", description="まきぐもガチャを引きます。激甘から激辛まで全4クラス♡")
     async def gacha(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         r = random.random()
         if r < 0.05: rarity, file = "🔮 【SSR】限界突破", "gacha_ssr.txt"
         elif r < 0.25: rarity, file = "💖 【SR】超デレ", "gacha_sr.txt"
         elif r < 0.60: rarity, file = "✨ 【R】ツンデレ", "gacha_r.txt"
         else: rarity, file = "🍃 【N】ノーマル", "gacha_n.txt"
-        await interaction.response.send_message(f"🎲 **ガチャ結果** 🎲\n【 {rarity} 】\n\n{self.bot.get_line(file).format(user=interaction.user.mention)}")
+        await interaction.followup.send(f"🎲 **ガチャ結果** 🎲\n【 {rarity} 】\n\n{self.bot.get_line(file).format(user=interaction.user.mention)}")
 
     @app_commands.command(name="相性", description="あなたとまきぐものの今日の相性（意味深）を占います")
     async def aishou(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         p = random.randint(1, 100)
         if p <= 20: c = "「…うぅ、今はちょっと直視できないです…」"
         elif p <= 60: c = "「普通の相性、ですね。これからもっと深めていけますよね？」"
         else: c = "「100%……！？ 嘘……っ、もう結ばれる運命だったってことですか……っ！？♡」"
-        await interaction.response.send_message(f"💘 **相性** 💘\n【 **{p}%** 】\n{c}")
+        await interaction.followup.send(f"💘 **相性** 💘\n【 **{p}%** 】\n{c}")
 
     @app_commands.command(name="ダイス_罰ゲーム", description="サイコロを振って身内鯖用の罰ゲームを言い渡します")
     async def dice_game(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"🎲 **ダイスの目: 【 {random.randint(1, 6)} 】**\n{interaction.user.mention} さんへの罰ゲーム告知です♡\n\n**「{self.bot.get_line('dice_games.txt')}」**")
+        await interaction.response.defer()
+        await interaction.followup.send(f"🎲 **ダイスの目: 【 {random.randint(1, 6)} 】**\n{interaction.user.mention} さんへの罰ゲーム告知です♡\n\n**「{self.bot.get_line('dice_games.txt')}」**")
 
 async def setup(bot):
     await bot.add_cog(Roleplay(bot))
