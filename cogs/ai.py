@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import random
+import asyncio
 
 try:
     from google import genai
@@ -64,7 +65,8 @@ class AI(commands.Cog):
                         ),
                         history=past_contents
                     )
-                    response = chat.send_message(user_msg)
+                    # API通信でイベントループをブロックしないように to_thread で実行
+                    response = await asyncio.to_thread(chat.send_message, user_msg)
                     reply = response.text
                     if reply:
                         break
@@ -77,7 +79,8 @@ class AI(commands.Cog):
                     legacy_genai.configure(api_key=key)
                     model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
                     temp_history = history + [{"role": "user", "parts": [user_msg]}]
-                    response = model.generate_content(temp_history)
+                    # API通信でイベントループをブロックしないように to_thread で実行
+                    response = await asyncio.to_thread(model.generate_content, temp_history)
                     reply = response.text
                     if reply:
                         break
