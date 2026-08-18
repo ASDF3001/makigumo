@@ -32,12 +32,9 @@ class AI(commands.Cog):
         await interaction.response.defer()
         
         # モデル候補（より確実な最新モデル名に更新、1.5は廃止済みのため除外）
+        # APIの公式案内通り、実在するモデルのみを指定
         models_to_try = [
-            'gemini-3.5-flash-lite', 
-            'gemini-3.5-flash',
-            'gemini-3.0-flash', 
-            'gemini-2.5-flash', 
-            'gemini-2.0-flash'
+            'gemini-3.6-flash'
         ]
         
         key = random.choice(self.api_keys)
