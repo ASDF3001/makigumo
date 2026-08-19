@@ -146,8 +146,11 @@ class Events(commands.Cog):
                     await self.bot.close()
                     return
 
-        guild_id = str(message.guild.id) if message.guild else None
-        if guild_id and guild_id in self.bot.channel_settings:
+        if not message.guild:
+            return
+
+        guild_id = str(message.guild.id)
+        if guild_id in self.bot.channel_settings:
             allowed_channels = self.bot.channel_settings[guild_id]
             if isinstance(allowed_channels, int):
                 allowed_channels = [allowed_channels]
