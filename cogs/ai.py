@@ -81,6 +81,9 @@ class AI(commands.Cog):
                         break
                 except Exception as e:
                     last_error = e
+                    err_s = str(e)
+                    if "User location is not supported" in err_s or "FAILED_PRECONDITION" in err_s:
+                        break
                     continue
         else:
             models_to_try = getattr(self, "available_models_cache", ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash'])
@@ -95,6 +98,9 @@ class AI(commands.Cog):
                         break
                 except Exception as e:
                     last_error = e
+                    err_s = str(e)
+                    if "User location is not supported" in err_s or "FAILED_PRECONDITION" in err_s:
+                        break
                     continue
 
         if reply:
