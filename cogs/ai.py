@@ -32,11 +32,6 @@ class AI(commands.Cog):
         await interaction.response.defer()
         
         # モデル候補（より確実な最新モデル名に更新、1.5は廃止済みのため除外）
-        # APIの公式案内通り、実在するモデルのみを指定
-        models_to_try = [
-            'gemini-3.6-flash'
-        ]
-        
         key = random.choice(self.api_keys)
         user_id = str(interaction.user.id)
         if user_id not in self.histories:
@@ -50,6 +45,17 @@ class AI(commands.Cog):
 
         if HAS_NEW_GENAI:
             client = genai.Client(api_key=key)
+            
+            # APIキーで利用可能なFlash系モデルを動的に取得（キャッシュしてあればそれを使う）
+            if not hasattr(self, "available_models_cache"):
+                try:
+                    models = [m.name for m in client.models.list() if 'flash' in m.name.lower()]
+                    models.sort(reverse=True) # gemini-3.6-flash, 3.5, 3.0, 2.5... の順にする
+                    self.available_models_cache = models
+                except Exception:
+                    self.available_models_cache = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
+            
+            models_to_try = self.available_models_cache
             
             past_contents = []
             for item in history:
@@ -75,6 +81,7 @@ class AI(commands.Cog):
                     last_error = e
                     continue
         else:
+            models_to_try = getattr(self, "available_models_cache", ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'])
             for model_name in models_to_try:
                 try:
                     legacy_genai.configure(api_key=key)
