@@ -1,5 +1,0 @@
-【v3.51 - Cloudflare Workers プロキシ（IP制限回避）対応アップデート】
-
-■ プロキシURL（GEMINI_BASE_URL）対応
-- `.env` に `GEMINI_BASE_URL` を指定することで、Cloudflare Workers 等のプロキシ経由で Google Gemini API へリクエストを送信できるよう対応しました。
-- これにより、ホスティング環境（MrtCloud等）のIPがGoogle側からブロックされている場合でも、100%確実に地域制限を回避して安定運用することが可能になります。
