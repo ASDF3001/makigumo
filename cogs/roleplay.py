@@ -13,6 +13,7 @@ class HelpView(discord.ui.View):
             e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバー＆DMに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
             e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（会話記憶30件）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
             e.add_field(name="💬 チャット自動反応ワード (サーバー内)", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた` / `まきぐそ`", inline=False)
+            e.add_field(name="🔗 公式リンク・支援", value="`/server` : 公式Discordサーバー\n`/donate` : 寄付・支援方法のご案内（開発者: rds9）", inline=False)
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
@@ -26,7 +27,7 @@ class HelpView(discord.ui.View):
             return e
         elif category == "admin":
             e = discord.Embed(title="⚙️ サーバー管理者向け機能", color=0xffb6c1)
-            e.add_field(name="動作管理", value="`/setting` : 反応チャンネルを指定\n`/invite` : 別サーバーに招待", inline=False)
+            e.add_field(name="動作管理", value="`/setting` : 反応チャンネルを指定\n`/invite` : 別サーバーに招待\n`/server` : 公式サーバー\n`/donate` : 寄付案内", inline=False)
             return e
 
     @discord.ui.button(label="🏠 ホーム", style=discord.ButtonStyle.blurple)
@@ -124,6 +125,21 @@ class Roleplay(commands.Cog):
     async def invite(self, interaction: discord.Interaction):
         url = f"https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=277025508352&scope=bot%20applications.commands"
         await interaction.response.send_message(f"「こちらのリンクから招待してくださいね！」\n{url}")
+
+    @app_commands.command(name="server", description="まきぐもぼっと公式Discordサーバーの招待リンクを表示します")
+    async def server(self, interaction: discord.Interaction):
+        await interaction.response.send_message("☁️ **まきぐもぼっと 公式Discordサーバー**\nhttps://discord.gg/kxFCwCj2eX")
+
+    @app_commands.command(name="donate", description="まきぐもちゃん＆開発者（rds9）への寄付・支援方法をご案内します")
+    async def donate(self, interaction: discord.Interaction):
+        msg = (
+            "💖 **まきぐもちゃん 寄付・支援のご案内** 💖\n\n"
+            "まきぐもちゃんの開発・サーバー維持費用をサポートしていただける変態さんは、"
+            "ぜひ Discord で **rds9** へ直接ご連絡いただくか、\n"
+            "メール: [rds9discord@outlook.jp](mailto:rds9discord@outlook.jp) までご連絡いただけますと非常に助かります！✨\n\n"
+            "温かいご支援、心よりお待ちしております！♡"
+        )
+        await interaction.response.send_message(msg, ephemeral=True)
 
     @app_commands.command(name="豆知識", description="まきぐもちゃんのヒミツの豆知識を披露します")
     async def mamechishiki(self, interaction: discord.Interaction):
