@@ -55,7 +55,7 @@ class AI(commands.Cog):
                         models.insert(0, preferred)
                     self.available_models_cache = models
                 except Exception:
-                    self.available_models_cache = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
+                    self.available_models_cache = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash']
             
             models_to_try = self.available_models_cache
             
@@ -83,7 +83,7 @@ class AI(commands.Cog):
                     last_error = e
                     continue
         else:
-            models_to_try = getattr(self, "available_models_cache", ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'])
+            models_to_try = getattr(self, "available_models_cache", ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash'])
             for model_name in models_to_try:
                 try:
                     legacy_genai.configure(api_key=key)
