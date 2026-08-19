@@ -9,6 +9,7 @@ from datetime import datetime, time, timezone, timedelta
 class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.status_index = 0
         self.update_status_loop.start()
         self.daily_restart.start()
         self.background_economy_saver.start()
@@ -64,7 +65,17 @@ class Events(commands.Cog):
 
     async def update_bot_status(self):
         total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
-        activity = discord.Activity(type=discord.ActivityType.watching, name=f"{total_members}人の変態を監視中♡ | /help")
+        latency_ms = round(self.bot.latency * 1000)
+
+        if self.status_index == 0:
+            activity = discord.Activity(type=discord.ActivityType.watching, name=f"{total_members}人の変態を監視中♡ | /help")
+        elif self.status_index == 1:
+            activity = discord.Game(name=f"ping: {latency_ms}ms")
+        else:
+            activity = discord.Streaming(name="Powered by rds9", url="https://www.twitch.tv/discord")
+
+        self.status_index = (self.status_index + 1) % 3
+
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         await self.save_server_count()
 
@@ -78,7 +89,7 @@ class Events(commands.Cog):
             pass
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=15)
     async def update_status_loop(self):
         if self.bot.is_ready():
             await self.update_bot_status()
