@@ -65,18 +65,21 @@ class Events(commands.Cog):
 
     async def update_bot_status(self):
         total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
+        guild_count = len(self.bot.guilds)
         latency_ms = round(self.bot.latency * 1000)
         stream_url = "https://rds9.pages.dev/"
 
         if self.status_index == 0:
             status_text = f"{total_members}人の変態を監視中♡ | /help"
         elif self.status_index == 1:
+            status_text = f"{guild_count}サーバーで監視中♡"
+        elif self.status_index == 2:
             status_text = f"ping: {latency_ms}ms"
         else:
             status_text = "Powered by rds9"
 
         activity = discord.Streaming(name=status_text, url=stream_url)
-        self.status_index = (self.status_index + 1) % 3
+        self.status_index = (self.status_index + 1) % 4
 
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         await self.save_server_count()
@@ -91,7 +94,7 @@ class Events(commands.Cog):
             pass
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=3)
     async def update_status_loop(self):
         if self.bot.is_ready():
             await self.update_bot_status()
