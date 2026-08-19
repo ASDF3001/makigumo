@@ -41,8 +41,13 @@ class AI(commands.Cog):
         reply = None
         last_error = Exception("APIから有効な応答が得られませんでした。")
 
+        base_url = os.getenv("GEMINI_BASE_URL")
+        
         if HAS_NEW_GENAI:
-            client = genai.Client(api_key=key)
+            http_opts = {}
+            if base_url:
+                http_opts["api_endpoint"] = base_url.rstrip("/")
+            client = genai.Client(api_key=key, http_options=http_opts if http_opts else None)
             
             if not hasattr(self, "available_models_cache"):
                 try:
@@ -89,7 +94,10 @@ class AI(commands.Cog):
             models_to_try = getattr(self, "available_models_cache", ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash'])
             for model_name in models_to_try:
                 try:
-                    legacy_genai.configure(api_key=key)
+                    client_opts = {}
+                    if base_url:
+                        client_opts["api_endpoint"] = base_url.rstrip("/")
+                    legacy_genai.configure(api_key=key, client_options=client_opts if client_opts else None)
                     model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
                     temp_history = history + [{"role": "user", "parts": [user_msg]}]
                     response = await asyncio.to_thread(model.generate_content, temp_history)
