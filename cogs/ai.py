@@ -51,7 +51,7 @@ class AI(commands.Cog):
 
         base_url = os.getenv("GEMINI_BASE_URL")
         
-        # ユーザー固有のカスタムプロンプトがあれば取得
+        # ユーザー固有のカスタムプロンプトがあればデフォルトプロンプトに追記結合する
         system_instruction = self.system_instruction
         import sqlite3
         try:
@@ -59,7 +59,7 @@ class AI(commands.Cog):
                 c = conn.cursor()
                 row = c.execute("SELECT prompt FROM user_prompts WHERE user_id = ?", (str(user_id),)).fetchone()
                 if row and row[0]:
-                    system_instruction = row[0]
+                    system_instruction = f"{self.system_instruction}\n\n【ユーザー指定の追加キャラクター設定・プロンプト】\n{row[0]}"
         except Exception:
             pass
 
