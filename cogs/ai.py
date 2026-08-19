@@ -48,6 +48,11 @@ class AI(commands.Cog):
                 try:
                     models = [m.name for m in client.models.list() if 'flash' in m.name.lower()]
                     models.sort(reverse=True)
+                    # ユーザー指定のGemini 3.5 Flash Liteを最優先にする
+                    preferred = 'models/gemini-3.5-flash-lite'
+                    if preferred in models:
+                        models.remove(preferred)
+                        models.insert(0, preferred)
                     self.available_models_cache = models
                 except Exception:
                     self.available_models_cache = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
