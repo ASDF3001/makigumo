@@ -59,8 +59,9 @@ class MakigumoBot(commands.AutoShardedBot):
                 except Exception:
                     pass
             
-            # Levelテーブル初期化
+            # Levelテーブル & カスタムプロンプトテーブル初期化
             c.execute("CREATE TABLE IF NOT EXISTS levels (user_id TEXT PRIMARY KEY, xp INTEGER, level INTEGER)")
+            c.execute("CREATE TABLE IF NOT EXISTS user_prompts (user_id TEXT PRIMARY KEY, prompt TEXT)")
             conn.commit()
             
             # SQLiteから読み込み

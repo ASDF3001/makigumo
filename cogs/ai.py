@@ -51,6 +51,18 @@ class AI(commands.Cog):
 
         base_url = os.getenv("GEMINI_BASE_URL")
         
+        # ユーザー固有のカスタムプロンプトがあれば取得
+        system_instruction = self.system_instruction
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                row = c.execute("SELECT prompt FROM user_prompts WHERE user_id = ?", (str(user_id),)).fetchone()
+                if row and row[0]:
+                    system_instruction = row[0]
+        except Exception:
+            pass
+
         if HAS_NEW_GENAI:
             http_opts = None
             if base_url:
@@ -84,7 +96,7 @@ class AI(commands.Cog):
                     chat = client.chats.create(
                         model=model_name,
                         config=types.GenerateContentConfig(
-                            system_instruction=self.system_instruction
+                            system_instruction=system_instruction
                         ),
                         history=past_contents
                     )
@@ -106,7 +118,7 @@ class AI(commands.Cog):
                     if base_url:
                         client_opts["api_endpoint"] = base_url.rstrip("/")
                     legacy_genai.configure(api_key=key, client_options=client_opts if client_opts else None)
-                    model = legacy_genai.GenerativeModel(model_name, system_instruction=self.system_instruction)
+                    model = legacy_genai.GenerativeModel(model_name, system_instruction=system_instruction)
                     temp_history = history + [{"role": "user", "parts": [user_msg]}]
                     response = await asyncio.to_thread(model.generate_content, temp_history)
                     if response and response.text:
@@ -145,7 +157,7 @@ class AI(commands.Cog):
         reply, err_msg = await self._generate_ai_reply(str(interaction.user.id), interaction.user.display_name, メッセージ)
         
         if reply:
-            await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n☁️ **まきぐも**: {reply}")
+            await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n{reply}")
         else:
             await interaction.followup.send(err_msg)
 
@@ -162,9 +174,31 @@ class AI(commands.Cog):
             async with message.channel.typing():
                 reply, err_msg = await self._generate_ai_reply(str(message.author.id), message.author.display_name, message.content)
                 if reply:
-                    await message.reply(f"☁️ **まきぐも**: {reply}")
+                    await message.reply(reply)
                 else:
                     await message.reply(err_msg)
+
+    @app_commands.command(name="user_settings", description="【ZETA機能】AIのシステムプロンプト（指示文）を自分専用にカスタムします")
+    @app_commands.describe(プロンプト="まきぐもAIへの指示文（ZETAのキャラクタープロンプト）。空欄でクリア（リセット）します")
+    async def user_settings(self, interaction: discord.Interaction, プロンプト: str = None):
+        user_id = str(interaction.user.id)
+        import sqlite3
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                if プロンプト:
+                    c.execute("INSERT OR REPLACE INTO user_prompts (user_id, prompt) VALUES (?, ?)", (user_id, プロンプト))
+                    conn.commit()
+                    await interaction.followup.send(f"✅ カスタムプロンプトを設定しました！\n\n```\n{プロンプト}\n```", ephemeral=True)
+                else:
+                    c.execute("DELETE FROM user_prompts WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    await interaction.followup.send("🔄 カスタムプロンプトをクリアし、デフォルトのまきぐも人格に戻しました！", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ 設定の保存に失敗しました: {e}", ephemeral=True)
 
     @commands.command(name="models")
     async def check_models(self, ctx):
