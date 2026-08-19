@@ -24,21 +24,13 @@ class AI(commands.Cog):
         self.histories = {}
         self.system_instruction = "あなたは「まきぐも」という名前の女の子です。ユーザーのことは「変態さん」または名前で呼びます。少しエッチで、ツンデレ、時々ヤンデレやドSなメイドのような口調で話します。ユーザーを監視・お仕置き・看病・罵倒するようなロールプレイが得意です。敬語をベースにしつつ、呆れたり照れたりする感情を表現してください。返答はDiscordのチャットに合うよう、長すぎず簡潔に（2〜4文程度）してください。AI言語モデルであることを自称しないでください。"
 
-    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（記憶あり）")
-    async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
-        if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
-            return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
-            
-        await interaction.response.defer()
-        
-        # モデル候補（より確実な最新モデル名に更新、1.5は廃止済みのため除外）
+    async def _generate_ai_reply(self, user_id, display_name, msg_content):
         key = random.choice(self.api_keys)
-        user_id = str(interaction.user.id)
         if user_id not in self.histories:
             self.histories[user_id] = []
             
         history = self.histories[user_id]
-        user_msg = f"{interaction.user.display_name}からのメッセージ: {メッセージ}"
+        user_msg = f"{display_name}からのメッセージ: {msg_content}"
         
         reply = None
         last_error = Exception("APIから有効な応答が得られませんでした。")
@@ -46,11 +38,10 @@ class AI(commands.Cog):
         if HAS_NEW_GENAI:
             client = genai.Client(api_key=key)
             
-            # APIキーで利用可能なFlash系モデルを動的に取得（キャッシュしてあればそれを使う）
             if not hasattr(self, "available_models_cache"):
                 try:
                     models = [m.name for m in client.models.list() if 'flash' in m.name.lower()]
-                    models.sort(reverse=True) # gemini-3.6-flash, 3.5, 3.0, 2.5... の順にする
+                    models.sort(reverse=True)
                     self.available_models_cache = models
                 except Exception:
                     self.available_models_cache = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash']
@@ -103,14 +94,44 @@ class AI(commands.Cog):
             
             if len(reply) > 1900:
                 reply = reply[:1900] + "…（ちょっと長すぎるので切りました！）"
-            
-            await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n☁️ **まきぐも**: {reply}")
+            return reply, None
         else:
             err_msg = str(last_error)
             if "User location is not supported" in err_msg or "FAILED_PRECONDITION" in err_msg:
-                await interaction.followup.send("「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（IP制限エラー）」")
+                return None, "「…っ、サーバーの設置場所（国・地域）がGoogle API非対応の地域にあるため返答できません…（IP制限エラー）」"
             else:
-                await interaction.followup.send(f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」")
+                return None, f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」"
+
+    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（記憶あり）")
+    async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
+        if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
+            return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
+            
+        await interaction.response.defer()
+        
+        reply, err_msg = await self._generate_ai_reply(str(interaction.user.id), interaction.user.display_name, メッセージ)
+        
+        if reply:
+            await interaction.followup.send(f"💬 **{interaction.user.display_name}**: {メッセージ}\n\n☁️ **まきぐも**: {reply}")
+        else:
+            await interaction.followup.send(err_msg)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+            
+        # DMの場合のみ、自動的にAIが返答する
+        if message.guild is None:
+            if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
+                return await message.channel.send("「AI機能を使うには `google-genai` ライブラリが必要です！」")
+                
+            async with message.channel.typing():
+                reply, err_msg = await self._generate_ai_reply(str(message.author.id), message.author.display_name, message.content)
+                if reply:
+                    await message.reply(f"☁️ **まきぐも**: {reply}")
+                else:
+                    await message.reply(err_msg)
 
     @commands.command(name="models")
     async def check_models(self, ctx):
