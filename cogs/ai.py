@@ -44,10 +44,10 @@ class AI(commands.Cog):
         base_url = os.getenv("GEMINI_BASE_URL")
         
         if HAS_NEW_GENAI:
-            http_opts = {}
+            http_opts = None
             if base_url:
-                http_opts["api_endpoint"] = base_url.rstrip("/")
-            client = genai.Client(api_key=key, http_options=http_opts if http_opts else None)
+                http_opts = types.HttpOptions(base_url=base_url.rstrip("/"))
+            client = genai.Client(api_key=key, http_options=http_opts)
             
             if not hasattr(self, "available_models_cache"):
                 try:
