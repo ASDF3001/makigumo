@@ -68,18 +68,21 @@ class Events(commands.Cog):
         guild_count = len(self.bot.guilds)
         latency_ms = round(self.bot.latency * 1000)
         stream_url = "https://rds9.pages.dev/"
+        shard_count = getattr(self.bot, 'shard_count', 1) or 1
 
-        if self.status_index == 0:
-            status_text = f"{total_members}人の変態を監視中♡ | /help"
-        elif self.status_index == 1:
-            status_text = f"{guild_count}サーバーで監視中♡"
-        elif self.status_index == 2:
-            status_text = f"ping: {latency_ms}ms"
-        else:
-            status_text = "Powered by rds9"
+        patterns = [
+            f"{total_members}人の変態を監視中♡ | /help",
+            f"{guild_count}サーバーで監視中♡",
+            f"ping: {latency_ms}ms",
+            "Powered by rds9"
+        ]
+        if shard_count > 1:
+            patterns.append(f"{shard_count} Shardsで分散稼働中✨")
+
+        status_text = patterns[self.status_index % len(patterns)]
+        self.status_index = (self.status_index + 1) % len(patterns)
 
         activity = discord.Streaming(name=status_text, url=stream_url)
-        self.status_index = (self.status_index + 1) % 4
 
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         await self.save_server_count()
