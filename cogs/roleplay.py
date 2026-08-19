@@ -10,16 +10,19 @@ class HelpView(discord.ui.View):
 
     def get_embed(self, category):
         if category == "home":
-            e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバーに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
-            e.add_field(name="💬 チャット自動反応ワード", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた`", inline=False)
+            e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバー＆DMに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
+            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（会話記憶30件）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
+            e.add_field(name="💬 チャット自動反応ワード (サーバー内)", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた` / `まきぐそ`", inline=False)
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
-            e.add_field(name="コマンド一覧", value="`/gacha` : まきぐもガチャ\n`/お仕置き` : 悪い子に宣告\n`/罵倒` : ドM向けご褒美\n`/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`\n`/update` : アップデート情報を確認\n`/version` : 閲覧可能なバージョン一覧を確認", inline=False)
+            e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話\n`/user_settings` : ZETA風プロンプト設定\n`/update` : アップデート情報確認\n`/version` : バージョン一覧確認", inline=False)
+            e.add_field(name="シチュエーションコマンド", value="`/gacha` : まきぐもガチャ\n`/お仕置き` / `/罵倒` / `/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`", inline=False)
             return e
         elif category == "game":
-            e = discord.Embed(title="🎰 カジノ・ギャンブルシステム", color=0xffb6c1)
-            e.add_field(name="コマンド一覧", value="`/daily` / `/gamble` / `/slot` / `/ダイス_罰ゲーム` / `/shop` / `/work` / `/pay` / `/ranking` / `/use` / `/stats`", inline=False)
+            e = discord.Embed(title="🎰 ギャンブル＆レベルシステム", color=0xffb6c1)
+            e.add_field(name="レベルシステム", value="`/level` : 現在のレベル・XPとランキングを確認", inline=False)
+            e.add_field(name="カジノ・経済コマンド", value="`/daily` / `/gamble` / `/slot` / `/ダイス_罰ゲーム` / `/shop` / `/work` / `/pay` / `/ranking` / `/use` / `/stats`", inline=False)
             return e
         elif category == "admin":
             e = discord.Embed(title="⚙️ サーバー管理者向け機能", color=0xffb6c1)
