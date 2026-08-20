@@ -71,6 +71,22 @@ class AI(commands.Cog):
                     system_instruction = f"{system_instruction}\n\n【ユーザーの個人的なメモ・秘密情報（会話のヒント）】\n{row_memo[0]}"
         except Exception:
             pass
+            
+        # 最新のアップデート情報を読み込んでAIに教える
+        try:
+            update_dir = "update"
+            if os.path.exists(update_dir):
+                files = [f for f in os.listdir(update_dir) if f.endswith(".txt")]
+                if files:
+                    files.sort(reverse=True)
+                    latest_file = os.path.join(update_dir, files[0])
+                    with open(latest_file, "r", encoding="utf-8") as f:
+                        update_info = f.read()
+                    # 1000文字程度に制限してシステムプロンプトに追記
+                    update_info = update_info[:1000]
+                    system_instruction = f"{system_instruction}\n\n【最新のアップデート情報（ユーザーに新機能を自慢・説明するときに使ってね）】\n{update_info}"
+        except Exception:
+            pass
 
         if HAS_NEW_GENAI:
             http_opts = None
