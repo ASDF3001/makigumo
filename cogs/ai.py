@@ -62,9 +62,13 @@ class AI(commands.Cog):
         try:
             with sqlite3.connect("database.db") as conn:
                 c = conn.cursor()
-                row = c.execute("SELECT prompt FROM user_prompts WHERE user_id = ?", (str(user_id),)).fetchone()
-                if row and row[0]:
-                    system_instruction = f"{self.system_instruction}\n\n【ユーザー指定の追加キャラクター設定・プロンプト】\n{row[0]}"
+                row_prompt = c.execute("SELECT prompt FROM user_prompts WHERE user_id = ?", (str(user_id),)).fetchone()
+                if row_prompt and row_prompt[0]:
+                    system_instruction = f"{system_instruction}\n\n【ユーザー指定の追加キャラクター設定・プロンプト】\n{row_prompt[0]}"
+                
+                row_memo = c.execute("SELECT memo FROM user_memos WHERE user_id = ?", (str(user_id),)).fetchone()
+                if row_memo and row_memo[0]:
+                    system_instruction = f"{system_instruction}\n\n【ユーザーの個人的なメモ・秘密情報（会話のヒント）】\n{row_memo[0]}"
         except Exception:
             pass
 
@@ -192,6 +196,79 @@ class AI(commands.Cog):
                     await message.reply(reply)
                 else:
                     await message.reply(err_msg)
+
+    @app_commands.command(name="diary", description="まきぐもちゃんが書いた、今日一日のあなたについてのツンデレ観察絵日記を読みます")
+    async def diary(self, interaction: discord.Interaction):
+        if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
+            return await interaction.response.send_message("「絵日記を書くには `google-genai` ライブラリが必要です！」", ephemeral=True)
+            
+        await interaction.response.defer()
+        user_id = str(interaction.user.id)
+        
+        # Get user context
+        u_data = self.bot.get_user_data(user_id)
+        pts = u_data.get("points", 0)
+        ai_count = 0
+        cmd_count = 0
+        
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
+                    sk, v = row[0], row[1]
+                    if sk == "ai_count": ai_count = v
+                    elif sk == "cmd_count": cmd_count = v
+        except Exception:
+            pass
+            
+        prompt = (
+            f"あなたはツンデレで少しドSなメイド「まきぐも」です。今日のユーザー({interaction.user.display_name})に関する『観察絵日記』を書いてください。\n"
+            f"【ユーザーの今日のステータス】\n"
+            f"所持ポインツ: {pts} pt\n"
+            f"AIと会話した累計回数: {ai_count} 回\n"
+            f"コマンドを実行した累計回数: {cmd_count} 回\n\n"
+            f"このステータスを参考に、「よく話しかけてくる変態」「ギャンブル依存症（ポイントが多い/少ない）」「コマンドばかり叩く暇人」などと呆れつつも、実は大切に思っているデレ要素を含んだ日記を100〜150文字程度で簡潔に書いてください。絵日記なので『〇月〇日 晴れ。』のような書き出しで始めてください。"
+        )
+        
+        reply = None
+        key = random.choice(self.api_keys)
+        try:
+            if HAS_NEW_GENAI:
+                client = genai.Client(api_key=key)
+                response = await asyncio.to_thread(client.models.generate_content, model='gemini-3.5-flash', contents=prompt)
+                reply = response.text
+            else:
+                legacy_genai.configure(api_key=key)
+                model = legacy_genai.GenerativeModel('gemini-3.5-flash')
+                response = await asyncio.to_thread(model.generate_content, prompt)
+                reply = response.text
+        except Exception:
+            reply = "「……日記？ まだ書いてませんよ。また後で見に来なさい。」"
+            
+        embed = discord.Embed(title=f"📖 まきぐもの観察絵日記 - {interaction.user.display_name}編", description=reply, color=0xffb6c1)
+        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="memo", description="まきぐもちゃんにあなたについての秘密のメモ（設定・記憶させたいこと）を教えます")
+    @app_commands.describe(内容="AIに覚えておいてほしいこと（空欄でメモを削除します）")
+    async def memo(self, interaction: discord.Interaction, 内容: str = None):
+        user_id = str(interaction.user.id)
+        import sqlite3
+        await interaction.response.defer(ephemeral=True)
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                if 内容:
+                    c.execute("INSERT OR REPLACE INTO user_memos (user_id, memo) VALUES (?, ?)", (user_id, 内容))
+                    conn.commit()
+                    await interaction.followup.send(f"📝 **まきぐもメモ帳に追記しました！**\n\n「なるほど、あなたは『{内容}』なんですね…ふふっ、しっかり私のメモ帳に刻み込んでおきましたよ♡」", ephemeral=True)
+                else:
+                    c.execute("DELETE FROM user_memos WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    await interaction.followup.send("🗑️ **メモを綺麗サッパリ消去しました！**\n\n「えっ、消しちゃうんですか？ まぁ、あなたの言う通りにしてあげますけど……次はもっと変態なこと教えてくださいね？」", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ メモ帳の書き込みに失敗しました: {e}", ephemeral=True)
 
     @app_commands.command(name="reset_ai", description="まきぐもAIとの会話記憶（過去50ターン分）をリセットします")
     async def reset_ai(self, interaction: discord.Interaction):

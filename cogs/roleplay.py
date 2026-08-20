@@ -302,5 +302,52 @@ class Roleplay(commands.Cog):
         embed.set_footer(text=f"消費: {cost} pts | 残高: {u_data['points']} pts")
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="birthday", description="あなたの誕生日をまきぐもに教えます（当日にツンデレなお祝いとポインツが貰えます♡）")
+    @app_commands.describe(月="誕生月", 日="誕生日")
+    async def birthday(self, interaction: discord.Interaction, 月: int, 日: int):
+        await interaction.response.defer(ephemeral=True)
+        if not (1 <= 月 <= 12) or not (1 <= 日 <= 31):
+            return await interaction.followup.send("❌ 月は1〜12、日は1〜31の数字で入力してくださいね！", ephemeral=True)
+            
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute("INSERT OR REPLACE INTO birthdays (user_id, month, day, last_notified) VALUES (?, ?, ?, 0)", (str(interaction.user.id), 月, 日))
+                conn.commit()
+            await interaction.followup.send(f"🎂 **誕生日を {月}月{日}日 に登録しました！**\n\n「……{月}月{日}日ですね。覚えておいてあげますから、当日は私に会いに来なさいよねっ！」", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ 登録に失敗しました: {e}", ephemeral=True)
+
+    @app_commands.command(name="suggest", description="作者への要望・新機能アイデアを匿名（作者にはバレます）で送ります")
+    @app_commands.describe(内容="要望内容（どんな機能が欲しいか等）")
+    async def suggest(self, interaction: discord.Interaction, 内容: str):
+        await interaction.response.defer(ephemeral=True)
+        from datetime import datetime
+        try:
+            with open("suggest.txt", "a", encoding="utf-8") as f:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{now}] {interaction.user.display_name} (@{interaction.user.name} / ID:{interaction.user.id})\n{内容}\n{'-'*30}\n")
+            await interaction.followup.send("💌 **要望を作者(ゆーと)へ送信しました！**\n\n「あなたの要望、ちゃんと開発者に届けておきましたから。……まあ、採用されるかはその変態具合によりますけどね♡」", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ 送信に失敗しました: {e}", ephemeral=True)
+
+    @app_commands.command(name="command", description="まきぐもBotの全コマンド一覧をこっそり確認します")
+    async def commands_list(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        embed = discord.Embed(title="📜 まきぐもコマンド早見表", color=0xadd8e6)
+        
+        rp_cmds = "`/aege` `/おねだり` `/添い寝` `/耳打ち` `/罵倒` `/看病` `/嫉妬` `/お仕置き`"
+        eco_cmds = "`/slots` `/coinflip` `/rps` `/daily` `/give` `/ranking` `/stats` `/titles`"
+        ai_cmds = "`/ai` `/reset_ai` `/ai_mode` `/user_settings` `/memo` `/diary`"
+        misc_cmds = "`/omikuji` `/present` `/gacha` `/相性` `/ダイス_罰ゲーム` `/birthday` `/suggest` `/command`"
+        
+        embed.add_field(name="🎀 ロールプレイ", value=rp_cmds, inline=False)
+        embed.add_field(name="💰 経済・ランキング", value=eco_cmds, inline=False)
+        embed.add_field(name="🧠 AI・記憶", value=ai_cmds, inline=False)
+        embed.add_field(name="🎲 おみくじ・その他", value=misc_cmds, inline=False)
+        
+        embed.set_footer(text="※AI機能や一部コマンドには専用ポイント(pts)を消費するものもあります")
+        await interaction.followup.send(embed=embed, ephemeral=True)
 async def setup(bot):
     await bot.add_cog(Roleplay(bot))

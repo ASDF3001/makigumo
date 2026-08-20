@@ -13,11 +13,13 @@ class Events(commands.Cog):
         self.update_status_loop.start()
         self.daily_restart.start()
         self.background_economy_saver.start()
+        self.check_birthdays.start()
 
     def cog_unload(self):
         self.update_status_loop.cancel()
         self.daily_restart.cancel()
         self.background_economy_saver.cancel()
+        self.check_birthdays.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -126,6 +128,35 @@ class Events(commands.Cog):
         if self.bot.is_economy_dirty:
             await asyncio.to_thread(self.bot._save_economy_sync_task)
             self.bot.is_economy_dirty = False
+
+    @tasks.loop(hours=1)
+    async def check_birthdays(self):
+        if not self.bot.is_ready():
+            return
+        
+        now = datetime.now(timezone(timedelta(hours=9)))
+        m, d, y = now.month, now.day, now.year
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                rows = c.execute("SELECT user_id, month, day, last_notified FROM birthdays").fetchall()
+                for uid, b_month, b_day, last_not in rows:
+                    if b_month == m and b_day == d and last_not != y:
+                        # 誕生日のユーザーがいた！
+                        try:
+                            user = await self.bot.fetch_user(int(uid))
+                            if user:
+                                msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！**\n\n「……別に、あなたが生まれた日なんて興味ありませんけど。\nでも、わざわざ私の隣にいてくれる物好きなんてあなたくらいですからね。\n……ほら、誕生日プレゼントの1000ポインツです。大事に使いなさいよねっ！///」"
+                                await user.send(msg)
+                                # 1000pts付与
+                                self.bot.add_points(str(user.id), 1000)
+                                c.execute("UPDATE birthdays SET last_notified = ? WHERE user_id = ?", (y, uid))
+                        except Exception:
+                            pass
+                conn.commit()
+        except Exception as e:
+            print(f"Birthday task error: {e}")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):

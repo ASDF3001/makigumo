@@ -65,6 +65,12 @@ class MakigumoBot(commands.AutoShardedBot):
             c.execute("CREATE TABLE IF NOT EXISTS bot_stats (key TEXT PRIMARY KEY, val INTEGER)")
             c.execute("CREATE TABLE IF NOT EXISTS user_stats (user_id TEXT, stat_key TEXT, val INTEGER, PRIMARY KEY (user_id, stat_key))")
             c.execute("CREATE TABLE IF NOT EXISTS omikuji_logs (user_id TEXT PRIMARY KEY, last_date TEXT)")
+            
+            # v3.8 新機能用テーブル
+            c.execute("CREATE TABLE IF NOT EXISTS birthdays (user_id TEXT PRIMARY KEY, month INTEGER, day INTEGER, last_notified INTEGER)")
+            c.execute("CREATE TABLE IF NOT EXISTS user_memos (user_id TEXT PRIMARY KEY, memo TEXT)")
+            c.execute("CREATE TABLE IF NOT EXISTS user_titles (user_id TEXT PRIMARY KEY, equipped_title TEXT)")
+            
             conn.commit()
             
             # SQLiteから読み込み

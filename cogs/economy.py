@@ -286,6 +286,7 @@ class Economy(commands.Cog):
         xp = lvl_info.get("xp", 0)
 
         ai_count, cmd_count, present_count = 0, 0, 0
+        equipped_title = None
         import sqlite3
         try:
             with sqlite3.connect("database.db") as conn:
@@ -295,15 +296,20 @@ class Economy(commands.Cog):
                     if sk == "ai_count": ai_count = v
                     elif sk == "cmd_count": cmd_count = v
                     elif sk == "present_count": present_count = v
+                
+                row = c.execute("SELECT equipped_title FROM user_titles WHERE user_id = ?", (user_id,)).fetchone()
+                if row: equipped_title = row[0]
         except Exception:
             pass
 
-        total_act = ai_count + cmd_count
-        if total_act >= 150: title_name = "👑 伝説の変態皇帝"
-        elif total_act >= 80: title_name = "💎 ど変態マスター"
-        elif total_act >= 30: title_name = "✨ 熟練の変態さん"
-        elif total_act >= 10: title_name = "🔰 一人前の変態"
-        else: title_name = "🌱 ひよっこ変態見習い"
+        # 称号が未設定の場合のデフォルト称号計算
+        if not equipped_title:
+            total_act = ai_count + cmd_count
+            if total_act >= 150: equipped_title = "👑 伝説の変態皇帝"
+            elif total_act >= 80: equipped_title = "💎 ど変態マスター"
+            elif total_act >= 30: equipped_title = "✨ 熟練の変態さん"
+            elif total_act >= 10: equipped_title = "🔰 一人前の変態"
+            else: equipped_title = "🌱 ひよっこ変態見習い"
 
         win_rate = min(90, 40 + int(bonus * 100))
 
@@ -311,7 +317,7 @@ class Economy(commands.Cog):
         if target_user.display_avatar:
             embed.set_thumbnail(url=target_user.display_avatar.url)
 
-        embed.add_field(name="🏷️ 変態称号", value=f"**{title_name}**", inline=False)
+        embed.add_field(name="🏷️ 変態称号", value=f"**{equipped_title}**", inline=False)
         embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
         embed.add_field(name="💰 所持ポインツ", value=f"**{points}** pts", inline=True)
         embed.add_field(name="🎲 ギャンブル勝率", value=f"**{win_rate}%** *(補正 +{int(bonus*100)}%)*", inline=True)
@@ -333,6 +339,65 @@ class Economy(commands.Cog):
         embed.set_footer(text="まきぐもぼっとがあなたの変態行為を24時間監視中♡")
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="titles", description="解放した称号を確認し、装備します")
+    async def titles(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        user_id = str(interaction.user.id)
+        
+        lvl_info = getattr(self.bot, 'levels', {}).get(user_id, {"level": 1})
+        lvl = lvl_info.get("level", 1)
+        
+        ai_count, cmd_count, present_count = 0, 0, 0
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
+                    sk, v = row[0], row[1]
+                    if sk == "ai_count": ai_count = v
+                    elif sk == "cmd_count": cmd_count = v
+                    elif sk == "present_count": present_count = v
+        except Exception:
+            pass
+
+        total_act = ai_count + cmd_count
+        unlocked = ["🌱 ひよっこ変態見習い"]
+        if total_act >= 10: unlocked.append("🔰 一人前の変態")
+        if total_act >= 30: unlocked.append("✨ 熟練の変態さん")
+        if total_act >= 80: unlocked.append("💎 ど変態マスター")
+        if total_act >= 150: unlocked.append("👑 伝説の変態皇帝")
+        
+        if lvl >= 10: unlocked.append("🔥 真なるドM")
+        if lvl >= 30: unlocked.append("🌌 宇宙規模の変態")
+        if present_count >= 10: unlocked.append("💸 上客パパ活おぢさん")
+        if present_count >= 50: unlocked.append("💍 まきぐものATM")
+
+        options = [discord.SelectOption(label=t, value=t) for t in unlocked]
+        
+        class TitleSelect(discord.ui.Select):
+            def __init__(self):
+                super().__init__(placeholder="装備する称号を選んでください", min_values=1, max_values=1, options=options)
+            
+            async def callback(self, interact: discord.Interaction):
+                selected = self.values[0]
+                try:
+                    with sqlite3.connect("database.db") as conn:
+                        cu = conn.cursor()
+                        cu.execute("INSERT OR REPLACE INTO user_titles (user_id, equipped_title) VALUES (?, ?)", (str(interact.user.id), selected))
+                        conn.commit()
+                    await interact.response.send_message(f"✅ 称号を **{selected}** に変更しました！\n`/stats` で確認してみましょう♡", ephemeral=True)
+                except Exception as e:
+                    await interact.response.send_message(f"❌ 変更に失敗しました: {e}", ephemeral=True)
+
+        class TitleView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=60)
+                self.add_item(TitleSelect())
+                
+        desc = "**【現在解放済みの称号】**\n" + "\n".join(f"・{t}" for t in unlocked) + "\n\n下のメニューから装備したい称号を選んでください！"
+        embed = discord.Embed(title="🎖️ 変態称号の管理", description=desc, color=0x9932cc)
+        await interaction.followup.send(embed=embed, view=TitleView(), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Economy(bot))
