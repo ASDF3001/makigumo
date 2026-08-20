@@ -179,21 +179,66 @@ class Economy(commands.Cog):
 
         await interaction.response.send_message(f"💸 **送金完了**\n「{interaction.user.mention}さんが、{相手.mention}さんに {額} pt 貢ぎましたよ！ 何を企んでるんですか…？」")
 
-    @app_commands.command(name="ranking", description="変態長者番付（ポインツランキングトップ10）を表示します")
-    async def ranking(self, interaction: discord.Interaction):
-        sorted_users = sorted(self.bot.economy.items(), key=lambda x: x[1].get("points", 0), reverse=True)
+    @app_commands.command(name="ranking", description="各種変態ランキングトップ10を表示します")
+    @app_commands.choices(種類=[
+        app_commands.Choice(name="💰 所持ポインツ長者番付", value="points"),
+        app_commands.Choice(name="💬 AI対話回数ランキング", value="ai"),
+        app_commands.Choice(name="⚡ コマンド実行数ランキング", value="cmd"),
+        app_commands.Choice(name="🎁 まきぐもへのお貢ぎランキング", value="present"),
+        app_commands.Choice(name="📊 レベルランキング", value="level"),
+    ])
+    async def ranking(self, interaction: discord.Interaction, 種類: app_commands.Choice[str] = None):
+        rank_type = 種類.value if 種類 else "points"
+        import sqlite3
 
-        embed = discord.Embed(title="🏆 変態長者番付トップ10", description="現在最もポインツを貯め込んでいる変態さんたちです♡", color=0xffd700)
+        items = []
+        unit = "pt"
+        title = "🏆 変態長者番付トップ10"
+        desc_header = "現在最もポインツを貯め込んでいる変態さんたちです♡"
 
+        if rank_type == "points":
+            sorted_users = sorted(self.bot.economy.items(), key=lambda x: x[1].get("points", 0), reverse=True)
+            for uid, data in sorted_users:
+                pts = data.get("points", 0)
+                if pts > 0: items.append((uid, pts))
+            unit = "pt"
+        elif rank_type in ["ai", "cmd", "present"]:
+            sk_map = {"ai": ("ai_count", "💬 AI対話回数ランキングトップ10", "回"),
+                      "cmd": ("cmd_count", "⚡ コマンド実行数ランキングトップ10", "回"),
+                      "present": ("present_count", "🎁 まきぐもへのお貢ぎランキングトップ10", "回")}
+            sk, title, unit = sk_map[rank_type]
+            desc_header = f"現在最も{sk_map[rank_type][1].replace('トップ10', '')}が多い変態さんたちです♡"
+            try:
+                with sqlite3.connect("database.db") as conn:
+                    c = conn.cursor()
+                    rows = c.execute("SELECT user_id, val FROM user_stats WHERE stat_key = ? ORDER BY val DESC LIMIT 10", (sk,)).fetchall()
+                    for r in rows:
+                        if r[1] > 0: items.append((r[0], r[1]))
+            except Exception:
+                pass
+        elif rank_type == "level":
+            title = "📊 変態レベルランキングトップ10"
+            desc_header = "現在最もレベルとXPが高い変態さんたちです♡"
+            unit = "Lv"
+            try:
+                with sqlite3.connect("database.db") as conn:
+                    c = conn.cursor()
+                    rows = c.execute("SELECT user_id, level, xp FROM levels ORDER BY level DESC, xp DESC LIMIT 10").fetchall()
+                    for r in rows:
+                        items.append((r[0], f"Lv.{r[1]} (`{r[2]} XP`)"))
+            except Exception:
+                pass
+
+        embed = discord.Embed(title=title, description=desc_header, color=0xffd700)
         desc = ""
-        for i, (uid, data) in enumerate(sorted_users[:10]):
-            pts = data.get("points", 0)
-            if pts > 0:
-                medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"**{i+1}位**"
-                desc += f"{medal} <@{uid}> : **{pts}** pt\n"
+        for i, item in enumerate(items[:10]):
+            uid = item[0]
+            val_str = f"**{item[1]}** {unit}" if rank_type != "level" else item[1]
+            medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"**{i+1}位**"
+            desc += f"{medal} <@{uid}> : {val_str}\n"
 
         if not desc:
-            desc = "まだ誰もポインツを持っていません。"
+            desc = "まだランキングデータがありません。"
 
         embed.description = desc
         await interaction.response.send_message(embed=embed)
