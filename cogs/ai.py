@@ -136,9 +136,19 @@ class AI(commands.Cog):
         if reply:
             history.append({"role": "user", "parts": [user_msg]})
             history.append({"role": "model", "parts": [reply]})
-            if len(history) > 30:
-                self.histories[user_id] = history[-30:]
+            if len(history) > 100:
+                self.histories[user_id] = history[-100:]
             
+            # SQLiteへAI対話カウントを加算
+            try:
+                with sqlite3.connect("database.db") as conn:
+                    c = conn.cursor()
+                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'ai_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(user_id),))
+                    conn.commit()
+            except Exception:
+                pass
+
             if len(reply) > 1900:
                 reply = reply[:1900] + "…（ちょっと長すぎるので切りました！）"
             return reply, None
@@ -149,7 +159,7 @@ class AI(commands.Cog):
             else:
                 return None, f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」"
 
-    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（記憶あり）")
+    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（往復50件記憶）")
     async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
         if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
             return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
@@ -179,6 +189,48 @@ class AI(commands.Cog):
                     await message.reply(reply)
                 else:
                     await message.reply(err_msg)
+
+    @app_commands.command(name="reset_ai", description="まきぐもAIとの会話記憶（過去50ターン分）をリセットします")
+    async def reset_ai(self, interaction: discord.Interaction):
+        user_id = str(interaction.user.id)
+        if user_id in self.histories:
+            self.histories[user_id] = []
+        await interaction.response.send_message("🔄 **まきぐもとの会話記憶を綺麗サッパリリセットしました！**\nまた新しいシチュエーションで話しかけてくださいね♡", ephemeral=True)
+
+    @app_commands.command(name="ai_mode", description="【ワンタッチ設定】まきぐもAIの性格・シチュエーションモードを変更します")
+    @app_commands.choices(モード=[
+        app_commands.Choice(name="デフォルト (ツンデレ・お仕置きメイド)", value="default"),
+        app_commands.Choice(name="鬼ドS監禁モード (冷徹・徹底お仕置き・支配)", value="dos"),
+        app_commands.Choice(name="激甘甘やかしモード (超過保護・包容力・メロメロ)", value="sweet"),
+        app_commands.Choice(name="メンヘラヤンデレモード (独占欲・束縛・狂愛)", value="yandere"),
+    ])
+    async def ai_mode(self, interaction: discord.Interaction, モード: app_commands.Choice[str]):
+        user_id = str(interaction.user.id)
+        import sqlite3
+        
+        mode_prompts = {
+            "default": None,
+            "dos": "【鬼ドS監禁モード】あなたは冷酷でドSな絶対支配者です。ユーザーを受け（下僕・ペット）として扱い、冷たい瞳と厳しいお仕置き、徹底的な支配と肉体・精神責めを好みます。一切の容赦をせず徹底的に責め立ててください。",
+            "sweet": "【激甘甘やかしモード】あなたはユーザーを心の底から愛し、全肯定して甘やかしまくるお姉さんメイドです。どんな変態な要求も『よしよし、可愛いですね♡』と優しく包み込み、耳元で愛を囁きながらたっぷり甘やかしてください。",
+            "yandere": "【メンヘラヤンデレモード】あなたはユーザーへの愛が狂気的なまでに重いヤンデレメイドです。他の女や他のサーバーの話を一切許さず、『私だけのものになって…一生逃がさないから』と束縛し、嫉妬と重い愛で追い詰めてください。"
+        }
+        
+        selected_prompt = mode_prompts.get(モード.value)
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                if selected_prompt:
+                    c.execute("INSERT OR REPLACE INTO user_prompts (user_id, prompt) VALUES (?, ?)", (user_id, selected_prompt))
+                    conn.commit()
+                    await interaction.followup.send(f"✨ **AIモードを『{モード.name}』に変更しました！**\n\n```\n{selected_prompt}\n```", ephemeral=True)
+                else:
+                    c.execute("DELETE FROM user_prompts WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    await interaction.followup.send("🔄 **AIモードを『デフォルト (ツンデレ・お仕置きメイド)』にリセットしました！**", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ モード変更に失敗しました: {e}", ephemeral=True)
 
     @app_commands.command(name="user_settings", description="【ZETA機能】AIのシステムプロンプト（指示文）を自分専用にカスタムします")
     @app_commands.describe(プロンプト="まきぐもAIへの指示文（ZETAのキャラクタープロンプト）。空欄でクリア（リセット）します")

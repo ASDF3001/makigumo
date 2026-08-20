@@ -210,5 +210,144 @@ class Roleplay(commands.Cog):
         await interaction.response.defer()
         await interaction.followup.send(f"🎲 **ダイスの目: 【 {random.randint(1, 6)} 】**\n{interaction.user.mention} さんへの罰ゲーム告知です♡\n\n**「{self.bot.get_line('dice_games.txt')}」**")
 
+    @app_commands.command(name="omikuji", description="1日1回ひけるまきぐもの変態おみくじ♡（ポインツも貰えます）")
+    async def omikuji(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        user_id = str(interaction.user.id)
+        from datetime import datetime
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        
+        import sqlite3
+        already_drawn = False
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                row = c.execute("SELECT last_date FROM omikuji_logs WHERE user_id = ?", (user_id,)).fetchone()
+                if row and row[0] == today_str:
+                    already_drawn = True
+        except Exception:
+            pass
+
+        if already_drawn:
+            return await interaction.followup.send("「おみくじは1日1回ですよ？ また明日ひきにきてくださいね♡」")
+
+        r = random.random()
+        if r < 0.05:
+            rank, pts, msg = "🔮 【超変態SSR】限界突破運", 500, "「嘘…こんな奇跡的な運が出ちゃうなんて…！今日は私、あなたの何でも言うこと聞いちゃうかも…♡」"
+        elif r < 0.25:
+            rank, pts, msg = "💖 【大吉】デレデレ運", 300, "「大吉ですよ！ふん、まあ私に愛されてるって証拠ですね♡ 感謝しなさい！」"
+        elif r < 0.60:
+            rank, pts, msg = "✨ 【吉】ツンデレ運", 200, "「吉ですね。可もなく不可もなく、私のお仕置きを素直に受け入れなさい」"
+        elif r < 0.85:
+            rank, pts, msg = "🍃 【小吉】日常運", 100, "「小吉です。まあ、平和で普通の一日になりそうですね」"
+        else:
+            rank, pts, msg = "💀 【大凶】ドSお仕置き運", 50, "「ふふっ…大凶が出ましたね…♡ 今日は覚悟しておきなさい、たっぷりお仕置きしてあげますから」"
+
+        # ポインツ付与
+        u_data = self.bot.get_user_data(user_id)
+        u_data["points"] += pts
+        self.bot.mark_economy_dirty()
+
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute("INSERT OR REPLACE INTO omikuji_logs (user_id, last_date) VALUES (?, ?)", (user_id, today_str))
+                conn.commit()
+        except Exception:
+            pass
+
+        embed = discord.Embed(title="⛩️ まきぐも変態おみくじ ⛩️", description=f"【 **{rank}** 】\n\n{msg}", color=0xff69b4)
+        embed.add_field(name="🎁 お給料ボーナス", value=f"`+{pts} pts` を獲得しました！（現在: `{u_data['points']} pts`）")
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="my_log", description="あなたの「変態カルテ（ステータスカード）」を表示します")
+    async def my_log(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        user_id = str(interaction.user.id)
+        
+        # ユーザーデータ取得
+        u_data = self.bot.get_user_data(user_id)
+        pts = u_data.get("points", 0)
+        
+        lvl_info = self.bot.levels.get(user_id, {"xp": 0, "level": 1})
+        lvl = lvl_info.get("level", 1)
+        xp = lvl_info.get("xp", 0)
+
+        ai_count = 0
+        cmd_count = 0
+        present_count = 0
+
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
+                    sk, v = row[0], row[1]
+                    if sk == "ai_count": ai_count = v
+                    elif sk == "cmd_count": cmd_count = v
+                    elif sk == "present_count": present_count = v
+        except Exception:
+            pass
+
+        total_activity = ai_count + cmd_count
+        if total_activity >= 150: title_name = "👑 伝説の変態皇帝"
+        elif total_activity >= 80: title_name = "💎 ど変態マスター"
+        elif total_activity >= 30: title_name = "✨ 熟練の変態さん"
+        elif total_activity >= 10: title_name = "🔰 一人前の変態"
+        else: title_name = "🌱 ひよっこ変態見習い"
+
+        embed = discord.Embed(title=f"📋 変態カルテ - {interaction.user.display_name}", color=0x9370db)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url if interaction.user.display_avatar else None)
+        embed.add_field(name="🏷️ 変態称号", value=f"**{title_name}**", inline=False)
+        embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
+        embed.add_field(name="💰 所持ポインツ", value=f"**{pts}** pts", inline=True)
+        embed.add_field(name="💬 AI対話回数", value=f"**{ai_count}** 回", inline=True)
+        embed.add_field(name="⚡ コマンド実行数", value=f"**{cmd_count}** 回", inline=True)
+        embed.add_field(name="🎁 お貢ぎ・プレゼント数", value=f"**{present_count}** 回", inline=True)
+        embed.set_footer(text="まきぐもぼっとがあなたの変態行為を24時間監視中♡")
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="present", description="まきぐもちゃんにプレゼント（お貢ぎ）を贈ります♡")
+    @app_commands.choices(アイテム=[
+        app_commands.Choice(name="☕ 高級アールグレイ紅茶 (100 pts)", value="tea"),
+        app_commands.Choice(name="🍫 媚薬入り手作りチョコ (300 pts)", value="chocolat"),
+        app_commands.Choice(name="🔒 鍵付きレザー首輪 (500 pts)", value="collar"),
+        app_commands.Choice(name="👗 特注勝負メイド服 (1000 pts)", value="dress"),
+    ])
+    async def present(self, interaction: discord.Interaction, アイテム: app_commands.Choice[str]):
+        await interaction.response.defer()
+        user_id = str(interaction.user.id)
+        
+        costs = {"tea": 100, "chocolat": 300, "collar": 500, "dress": 1000}
+        cost = costs.get(アイテム.value, 100)
+        
+        u_data = self.bot.get_user_data(user_id)
+        if u_data["points"] < cost:
+            return await interaction.followup.send(f"❌ ポインツが足りません！（必要: `{cost} pts` / 所持: `{u_data['points']} pts`）")
+
+        u_data["points"] -= cost
+        self.bot.mark_economy_dirty()
+
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'present_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id,))
+                conn.commit()
+        except Exception:
+            pass
+
+        reactions = {
+            "tea": "「……あら？ 高級紅茶ですか……？ べ、別にあんたに喜んでほしいわけじゃないけど……ありがとう。淹れてあげますから、一緒に飲みなさい」",
+            "chocolat": "「な、何ですかこの怪しいチョコ……！ 媚薬が入ってる！？ バカじゃないの変態さん！ ……っ、でも、せっかくだから後で1人でこっそり食べます……///」",
+            "collar": "「首輪……！？ しかも鍵付き……？ ふっ……これを私につけろってこと？ それとも……あなたにつけて可愛がってほしいの……？♡」",
+            "dress": "「き、着替えさせろって……こんな露出の激しいメイド服、着るわけないでしょ！？ …っ、でも……あんたがどうしてもって言うなら……今夜だけ特別に着てあげるわよ……///」"
+        }
+
+        reply_msg = reactions.get(アイテム.value, "「ありがとう、貰っておきますね」")
+        embed = discord.Embed(title=f"🎁 まきぐもちゃんへのお貢ぎ ({アイテム.name.split(' (')[0]})", description=reply_msg, color=0xff1493)
+        embed.set_footer(text=f"消費: {cost} pts | 残高: {u_data['points']} pts")
+        await interaction.followup.send(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(Roleplay(bot))

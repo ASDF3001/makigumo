@@ -62,6 +62,9 @@ class MakigumoBot(commands.AutoShardedBot):
             # Levelテーブル & カスタムプロンプトテーブル初期化
             c.execute("CREATE TABLE IF NOT EXISTS levels (user_id TEXT PRIMARY KEY, xp INTEGER, level INTEGER)")
             c.execute("CREATE TABLE IF NOT EXISTS user_prompts (user_id TEXT PRIMARY KEY, prompt TEXT)")
+            c.execute("CREATE TABLE IF NOT EXISTS bot_stats (key TEXT PRIMARY KEY, val INTEGER)")
+            c.execute("CREATE TABLE IF NOT EXISTS user_stats (user_id TEXT, stat_key TEXT, val INTEGER, PRIMARY KEY (user_id, stat_key))")
+            c.execute("CREATE TABLE IF NOT EXISTS omikuji_logs (user_id TEXT PRIMARY KEY, last_date TEXT)")
             conn.commit()
             
             # SQLiteから読み込み

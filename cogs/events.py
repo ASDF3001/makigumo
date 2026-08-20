@@ -75,17 +75,31 @@ class Events(commands.Cog):
                 
             stream_url = "https://rds9.pages.dev/"
 
+            chat_count, cmd_count = 0, 0
+            import sqlite3
+            try:
+                with sqlite3.connect("database.db") as conn:
+                    c = conn.cursor()
+                    r1 = c.execute("SELECT val FROM bot_stats WHERE key = 'chat_count'").fetchone()
+                    if r1: chat_count = r1[0]
+                    r2 = c.execute("SELECT val FROM bot_stats WHERE key = 'cmd_count'").fetchone()
+                    if r2: cmd_count = r2[0]
+            except Exception:
+                pass
+
             if self.status_index == 0:
                 status_text = f"{total_members}人の変態を監視中♡ | /help"
             elif self.status_index == 1:
                 status_text = f"{guild_count}サーバーで監視中♡"
             elif self.status_index == 2:
+                status_text = f"💬 {chat_count}回の会話 | ⚡ {cmd_count}回のコマンド"
+            elif self.status_index == 3:
                 status_text = f"ping: {latency_ms}ms"
             else:
                 status_text = "Powered by rds9"
 
             activity = discord.Streaming(name=status_text, url=stream_url)
-            self.status_index = (self.status_index + 1) % 4
+            self.status_index = (self.status_index + 1) % 5
 
             await self.bot.change_presence(status=discord.Status.online, activity=activity)
             await self.save_server_count()
@@ -196,9 +210,34 @@ class Events(commands.Cog):
 
         if triggered:
             try:
+                import sqlite3
+                with sqlite3.connect("database.db") as conn:
+                    c = conn.cursor()
+                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(message.author.id),))
+                    conn.commit()
+            except Exception:
+                pass
+            try:
                 await message.reply(self.bot.get_line(filename).format(user=message.author.mention))
             except discord.Forbidden:
                 pass
+
+    @commands.Cog.listener()
+    async def on_app_command_completion(self, interaction: discord.Interaction, command: discord.app_commands.Command):
+        try:
+            import sqlite3
+            user_id = str(interaction.user.id)
+            cmd_name = command.name
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
+                c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id,))
+                # 個別コマンドカウント（お仕置き・罵倒等）
+                c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, ?, 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id, f"cmd_{cmd_name}"))
+                conn.commit()
+        except Exception:
+            pass
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
