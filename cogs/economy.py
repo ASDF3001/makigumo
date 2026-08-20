@@ -226,19 +226,54 @@ class Economy(commands.Cog):
         else:
             await interaction.response.send_message("「そのアイテムは持っているだけで効果がある装備アイテム（幸運の雲など）ですよ！」", ephemeral=True)
 
-    @app_commands.command(name="stats", description="現在の所持ポインツや所持アイテム、ステータスを確認します")
-    async def stats(self, interaction: discord.Interaction):
-        user_data = self.bot.get_user_data(interaction.user.id)
+    @app_commands.command(name="stats", description="あなたの変態カルテ（レベル・ポインツ・勝率・AI対話数・所持アイテム）を確認します")
+    async def stats(self, interaction: discord.Interaction, ターゲット: discord.Member = None):
+        target_user = ターゲット or interaction.user
+        user_id = str(target_user.id)
+        
+        user_data = self.bot.get_user_data(user_id)
         points = user_data.get("points", 0)
         inventory = user_data.get("inventory", {})
-        bonus = self.bot.get_probability_bonus(interaction.user.id)
+        bonus = self.bot.get_probability_bonus(target_user.id)
 
-        embed = discord.Embed(title=f"📊 {interaction.user.display_name} さんのステータス", color=0x87ceeb)
-        embed.add_field(name="💰 所持ポインツ", value=f"**{points}** pt", inline=False)
+        lvl_info = getattr(self.bot, 'levels', {}).get(user_id, {"xp": 0, "level": 1})
+        lvl = lvl_info.get("level", 1)
+        xp = lvl_info.get("xp", 0)
 
-        # 修正: 上限90%表記に変更
+        ai_count, cmd_count, present_count = 0, 0, 0
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
+                    sk, v = row[0], row[1]
+                    if sk == "ai_count": ai_count = v
+                    elif sk == "cmd_count": cmd_count = v
+                    elif sk == "present_count": present_count = v
+        except Exception:
+            pass
+
+        total_act = ai_count + cmd_count
+        if total_act >= 150: title_name = "👑 伝説の変態皇帝"
+        elif total_act >= 80: title_name = "💎 ど変態マスター"
+        elif total_act >= 30: title_name = "✨ 熟練の変態さん"
+        elif total_act >= 10: title_name = "🔰 一人前の変態"
+        else: title_name = "🌱 ひよっこ変態見習い"
+
         win_rate = min(90, 40 + int(bonus * 100))
-        embed.add_field(name="🎲 ギャンブル勝率", value=f"基本40% ＋ アイテム補正{int(bonus * 100)}% ＝ **現在 {win_rate}%** (※勝率上限90%)", inline=False)
+
+        embed = discord.Embed(title=f"📋 変態カルテ & ステータス - {target_user.display_name}", color=0x9370db)
+        if target_user.display_avatar:
+            embed.set_thumbnail(url=target_user.display_avatar.url)
+
+        embed.add_field(name="🏷️ 変態称号", value=f"**{title_name}**", inline=False)
+        embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
+        embed.add_field(name="💰 所持ポインツ", value=f"**{points}** pts", inline=True)
+        embed.add_field(name="🎲 ギャンブル勝率", value=f"**{win_rate}%** *(補正 +{int(bonus*100)}%)*", inline=True)
+
+        embed.add_field(name="💬 AI対話回数", value=f"**{ai_count}** 回", inline=True)
+        embed.add_field(name="⚡ コマンド実行数", value=f"**{cmd_count}** 回", inline=True)
+        embed.add_field(name="🎁 お貢ぎ数", value=f"**{present_count}** 回", inline=True)
 
         inv_text = ""
         for item_id, count in inventory.items():
@@ -250,9 +285,9 @@ class Economy(commands.Cog):
             inv_text = "何も持っていません。"
 
         embed.add_field(name="🎒 所持アイテム", value=inv_text, inline=False)
+        embed.set_footer(text="まきぐもぼっとがあなたの変態行為を24時間監視中♡")
 
-        # 修正: 本人しか見えないように ephemeral=True を追加
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Economy(bot))

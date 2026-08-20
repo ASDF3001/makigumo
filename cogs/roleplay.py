@@ -17,13 +17,13 @@ class HelpView(discord.ui.View):
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
-            e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話\n`/user_settings` : ZETA風プロンプト設定\n`/update` : アップデート情報確認\n`/version` : バージョン一覧確認", inline=False)
-            e.add_field(name="シチュエーションコマンド", value="`/gacha` : まきぐもガチャ\n`/お仕置き` / `/罵倒` / `/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`", inline=False)
+            e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話（往復50件記憶）\n`/ai_mode` : 性格モードワンタッチ変更\n`/reset_ai` : AI記憶リセット\n`/user_settings` : カスタムプロンプト設定\n`/update` / `/version`", inline=False)
+            e.add_field(name="シチュエーション＆エンタメ", value="`/gacha` : まきぐもガチャ\n`/omikuji` : 変態おみくじ（1日1回）\n`/present` : まきぐもにお貢ぎ・プレゼント\n`/お仕置き` / `/罵倒` / `/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`", inline=False)
             return e
         elif category == "game":
-            e = discord.Embed(title="🎰 ギャンブル＆レベルシステム", color=0xffb6c1)
-            e.add_field(name="レベルシステム", value="`/level` : 現在のレベル・XPとランキングを確認", inline=False)
-            e.add_field(name="カジノ・経済コマンド", value="`/daily` / `/gamble` / `/slot` / `/ダイス_罰ゲーム` / `/shop` / `/work` / `/pay` / `/ranking` / `/use` / `/stats`", inline=False)
+            e = discord.Embed(title="🎰 ギャンブル＆レベル・ステータス", color=0xffb6c1)
+            e.add_field(name="レベル＆カルテシステム", value="`/level` : 現在のレベル・XPとランキングを表示\n`/stats` : あなたの変態カルテ（称号・レベル・勝率・AI対話数・所持品）を表示", inline=False)
+            e.add_field(name="カジノ・経済コマンド", value="`/daily` / `/gamble` / `/slot` / `/ダイス_罰ゲーム` / `/shop` / `/work` / `/pay` / `/ranking` / `/use`", inline=False)
             return e
         elif category == "admin":
             e = discord.Embed(title="⚙️ サーバー管理者向け機能", color=0xffb6c1)
@@ -258,53 +258,6 @@ class Roleplay(commands.Cog):
 
         embed = discord.Embed(title="⛩️ まきぐも変態おみくじ ⛩️", description=f"【 **{rank}** 】\n\n{msg}", color=0xff69b4)
         embed.add_field(name="🎁 お給料ボーナス", value=f"`+{pts} pts` を獲得しました！（現在: `{u_data['points']} pts`）")
-        await interaction.followup.send(embed=embed)
-
-    @app_commands.command(name="my_log", description="あなたの「変態カルテ（ステータスカード）」を表示します")
-    async def my_log(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        user_id = str(interaction.user.id)
-        
-        # ユーザーデータ取得
-        u_data = self.bot.get_user_data(user_id)
-        pts = u_data.get("points", 0)
-        
-        lvl_info = self.bot.levels.get(user_id, {"xp": 0, "level": 1})
-        lvl = lvl_info.get("level", 1)
-        xp = lvl_info.get("xp", 0)
-
-        ai_count = 0
-        cmd_count = 0
-        present_count = 0
-
-        import sqlite3
-        try:
-            with sqlite3.connect("database.db") as conn:
-                c = conn.cursor()
-                for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
-                    sk, v = row[0], row[1]
-                    if sk == "ai_count": ai_count = v
-                    elif sk == "cmd_count": cmd_count = v
-                    elif sk == "present_count": present_count = v
-        except Exception:
-            pass
-
-        total_activity = ai_count + cmd_count
-        if total_activity >= 150: title_name = "👑 伝説の変態皇帝"
-        elif total_activity >= 80: title_name = "💎 ど変態マスター"
-        elif total_activity >= 30: title_name = "✨ 熟練の変態さん"
-        elif total_activity >= 10: title_name = "🔰 一人前の変態"
-        else: title_name = "🌱 ひよっこ変態見習い"
-
-        embed = discord.Embed(title=f"📋 変態カルテ - {interaction.user.display_name}", color=0x9370db)
-        embed.set_thumbnail(url=interaction.user.display_avatar.url if interaction.user.display_avatar else None)
-        embed.add_field(name="🏷️ 変態称号", value=f"**{title_name}**", inline=False)
-        embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
-        embed.add_field(name="💰 所持ポインツ", value=f"**{pts}** pts", inline=True)
-        embed.add_field(name="💬 AI対話回数", value=f"**{ai_count}** 回", inline=True)
-        embed.add_field(name="⚡ コマンド実行数", value=f"**{cmd_count}** 回", inline=True)
-        embed.add_field(name="🎁 お貢ぎ・プレゼント数", value=f"**{present_count}** 回", inline=True)
-        embed.set_footer(text="まきぐもぼっとがあなたの変態行為を24時間監視中♡")
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="present", description="まきぐもちゃんにプレゼント（お貢ぎ）を贈ります♡")
