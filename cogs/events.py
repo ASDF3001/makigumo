@@ -64,25 +64,33 @@ class Events(commands.Cog):
             print(f"⚠️ サーバー数保存エラー: {e}")
 
     async def update_bot_status(self):
-        total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
-        guild_count = len(self.bot.guilds)
-        latency_ms = round(self.bot.latency * 1000)
-        stream_url = "https://rds9.pages.dev/"
+        try:
+            total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
+            guild_count = len(self.bot.guilds)
+            
+            try:
+                latency_ms = round(self.bot.latency * 1000)
+            except (OverflowError, ValueError):
+                latency_ms = 0
+                
+            stream_url = "https://rds9.pages.dev/"
 
-        if self.status_index == 0:
-            status_text = f"{total_members}人の変態を監視中♡ | /help"
-        elif self.status_index == 1:
-            status_text = f"{guild_count}サーバーで監視中♡"
-        elif self.status_index == 2:
-            status_text = f"ping: {latency_ms}ms"
-        else:
-            status_text = "Powered by rds9"
+            if self.status_index == 0:
+                status_text = f"{total_members}人の変態を監視中♡ | /help"
+            elif self.status_index == 1:
+                status_text = f"{guild_count}サーバーで監視中♡"
+            elif self.status_index == 2:
+                status_text = f"ping: {latency_ms}ms"
+            else:
+                status_text = "Powered by rds9"
 
-        activity = discord.Streaming(name=status_text, url=stream_url)
-        self.status_index = (self.status_index + 1) % 4
+            activity = discord.Streaming(name=status_text, url=stream_url)
+            self.status_index = (self.status_index + 1) % 4
 
-        await self.bot.change_presence(status=discord.Status.online, activity=activity)
-        await self.save_server_count()
+            await self.bot.change_presence(status=discord.Status.online, activity=activity)
+            await self.save_server_count()
+        except Exception as e:
+            print(f"⚠️ ステータス更新エラー: {e}")
 
     @tasks.loop(time=time(hour=3, minute=0, tzinfo=timezone(timedelta(hours=9))))
     async def daily_restart(self):
