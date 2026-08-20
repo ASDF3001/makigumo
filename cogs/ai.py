@@ -236,11 +236,11 @@ class AI(commands.Cog):
         try:
             if HAS_NEW_GENAI:
                 client = genai.Client(api_key=key)
-                response = await asyncio.to_thread(client.models.generate_content, model='gemini-3.5-flash', contents=prompt)
+                response = await asyncio.to_thread(client.models.generate_content, model='gemini-3.5-flash-lite', contents=prompt)
                 reply = response.text
             else:
                 legacy_genai.configure(api_key=key)
-                model = legacy_genai.GenerativeModel('gemini-3.5-flash')
+                model = legacy_genai.GenerativeModel('gemini-3.5-flash-lite')
                 response = await asyncio.to_thread(model.generate_content, prompt)
                 reply = response.text
         except Exception:
