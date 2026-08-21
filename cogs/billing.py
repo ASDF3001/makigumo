@@ -239,7 +239,7 @@ class Billing(commands.Cog):
                 "8. **観察絵日記 (`/diary`)**: 1日1回 ➔ 📓 **1日 3回**\n"
                 "9. **限定称号**: 👑 **「まきぐもパトロン」** / 💎 **「筆頭変態紳士」**\n\n"
                 "### 📱 お支払い方法\n"
-                "・**PayPay 送金リンク**（100円または500円のリンクを作成）\n"
+                "・⭐ **PayPay 送金リンク【おすすめ！】**（PayPayアプリで100円または500円のリンクを作成）\n"
                 "・**Amazon ギフトカード番号**\n"
                 "※保護者の同意・クレジットカード不要でご利用いただけます。"
             ),
@@ -270,9 +270,9 @@ class Billing(commands.Cog):
                 ephemeral=True
             )
 
-    @app_commands.command(name="pay", description="PayPay送金リンクまたはAmazonギフトコードを提出してProプランを申請します")
+    @app_commands.command(name="pro_pay", description="PayPay送金リンクまたはAmazonギフトコードを提出してProプランを申請します")
     @app_commands.describe(content="PayPay送金リンク(https://...) または Amazonギフトコード")
-    async def pay_cmd(self, interaction: discord.Interaction, content: str):
+    async def pro_pay_cmd(self, interaction: discord.Interaction, content: str):
         content = content.strip()
         user_id = str(interaction.user.id)
         now_str = datetime.now(timezone(timedelta(hours=9))).isoformat()

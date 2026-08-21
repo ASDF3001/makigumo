@@ -340,7 +340,7 @@ class Roleplay(commands.Cog):
         rp_cmds = "`/aege` `/おねだり` `/添い寝` `/耳打ち` `/罵倒` `/看病` `/嫉妬` `/お仕置き`"
         eco_cmds = "`/slots` `/coinflip` `/rps` `/daily` `/give` `/ranking` `/stats` `/titles`"
         ai_cmds = "`/ai` `/reset_ai` `/ai_mode` `/user_settings` `/memo` `/diary`"
-        pro_cmds = "`/pro` (Proプラン案内) `/plan` (プラン状況確認) `/pay` (支払い申請)"
+        pro_cmds = "`/pro` (Proプラン案内) `/plan` (プラン状況確認) `/pro_pay` (支払い申請)"
         misc_cmds = "`/omikuji` `/present` `/gacha` `/相性` `/ダイス_罰ゲーム` `/birthday` `/suggest` `/command`"
         
         embed.add_field(name="🎀 ロールプレイ", value=rp_cmds, inline=False)
