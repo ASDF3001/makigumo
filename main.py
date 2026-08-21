@@ -183,8 +183,11 @@ class MakigumoBot(commands.AutoShardedBot):
     def is_pro(self, user_id) -> bool:
         uid = str(user_id)
         admin_id = os.getenv('ADMIN_USER_ID')
-        if admin_id and uid == admin_id:
+        if admin_id and uid == str(admin_id):
             return True
+        if hasattr(self, 'application') and self.application and self.application.owner:
+            if uid == str(self.application.owner.id):
+                return True
         try:
             with sqlite3.connect("database.db") as conn:
                 c = conn.cursor()

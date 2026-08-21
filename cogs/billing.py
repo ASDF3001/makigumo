@@ -317,6 +317,15 @@ class Billing(commands.Cog):
 
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
 
+        admin_id = os.getenv('ADMIN_USER_ID')
+        is_admin = (admin_id and user_id == str(admin_id))
+        try:
+            app_info = await self.bot.application_info()
+            if user_id == str(app_info.owner.id):
+                is_admin = True
+        except Exception:
+            pass
+
         with sqlite3.connect("database.db") as conn:
             c = conn.cursor()
             row = c.execute("SELECT plan_type, expires_at, daily_ai_count, last_reset_date FROM user_subscriptions WHERE user_id = ?", (user_id,)).fetchone()
@@ -332,6 +341,15 @@ class Billing(commands.Cog):
                     elif p_type == 'pro_monthly':
                         plan_type_str = "💎 月額Pro"
                         expires_str = exp[:10] if exp else "不明"
+            elif is_admin:
+                plan_type_str = "👑 開発者・永久Pro (永続)"
+                expires_str = "無期限"
+                max_daily = 200
+
+        if is_admin and plan_type_str == "無料プラン (Free)":
+            plan_type_str = "👑 開発者・永久Pro (永続)"
+            expires_str = "無期限"
+            max_daily = 200
 
         remain = max(0, max_daily - daily_used)
         embed = discord.Embed(
