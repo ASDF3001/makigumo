@@ -10,16 +10,39 @@ class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.status_index = 0
-        self.update_status_loop.start()
-        self.daily_restart.start()
-        self.background_economy_saver.start()
-        self.check_birthdays.start()
+        if not self.update_status_loop.is_running():
+            self.update_status_loop.start()
+        if not self.daily_restart.is_running():
+            self.daily_restart.start()
+        if not self.background_economy_saver.is_running():
+            self.background_economy_saver.start()
+        if not self.check_birthdays.is_running():
+            self.check_birthdays.start()
+        if not self.periodic_server_count_saver.is_running():
+            self.periodic_server_count_saver.start()
 
     def cog_unload(self):
         self.update_status_loop.cancel()
         self.daily_restart.cancel()
         self.background_economy_saver.cancel()
         self.check_birthdays.cancel()
+        self.periodic_server_count_saver.cancel()
+
+    def _is_ws_available(self) -> bool:
+        if not self.bot.is_ready() or self.bot.is_closed():
+            return False
+        if hasattr(self.bot, 'shards') and self.bot.shards:
+            for shard in self.bot.shards.values():
+                if shard.ws is None or getattr(shard.ws, 'closed', True):
+                    return False
+                if getattr(shard.ws, 'is_ratelimited', None) and shard.ws.is_ratelimited():
+                    return False
+        else:
+            if self.bot.ws is None or getattr(self.bot.ws, 'closed', True):
+                return False
+            if getattr(self.bot, 'is_ws_ratelimited', None) and self.bot.is_ws_ratelimited():
+                return False
+        return True
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -32,8 +55,23 @@ class Events(commands.Cog):
                 version = files[0].replace('.txt', '')
         print(f'ログイン成功: {self.bot.user.name} {version} (Gamble Ready)')
         await self.update_bot_status()
+        await self.save_server_count()
+
+    @commands.Cog.listener()
+    async def on_resumed(self):
+        await self.update_bot_status()
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        await self.save_server_count()
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        await self.save_server_count()
 
     async def save_server_count(self):
+        if not self.bot.is_ready() or self.bot.is_closed():
+            return
         try:
             total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
             guild_count = len(self.bot.guilds)
@@ -66,6 +104,9 @@ class Events(commands.Cog):
             print(f"⚠️ サーバー数保存エラー: {e}")
 
     async def update_bot_status(self):
+        if not self._is_ws_available():
+            return
+
         try:
             total_members = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
             guild_count = len(self.bot.guilds)
@@ -104,7 +145,8 @@ class Events(commands.Cog):
             self.status_index = (self.status_index + 1) % 5
 
             await self.bot.change_presence(status=discord.Status.online, activity=activity)
-            await self.save_server_count()
+        except (discord.errors.ConnectionClosed, discord.errors.GatewayNotFound, RuntimeError):
+            pass
         except Exception as e:
             print(f"⚠️ ステータス更新エラー: {e}")
 
@@ -118,16 +160,37 @@ class Events(commands.Cog):
             pass
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    @tasks.loop(seconds=3)
+    @daily_restart.before_loop
+    async def before_daily_restart(self):
+        await self.bot.wait_until_ready()
+
+    @tasks.loop(seconds=15)
     async def update_status_loop(self):
-        if self.bot.is_ready():
+        if self._is_ws_available():
             await self.update_bot_status()
+
+    @update_status_loop.before_loop
+    async def before_update_status_loop(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(seconds=30)
     async def background_economy_saver(self):
         if self.bot.is_economy_dirty:
             await asyncio.to_thread(self.bot._save_economy_sync_task)
             self.bot.is_economy_dirty = False
+
+    @background_economy_saver.before_loop
+    async def before_background_economy_saver(self):
+        await self.bot.wait_until_ready()
+
+    @tasks.loop(minutes=30)
+    async def periodic_server_count_saver(self):
+        if self.bot.is_ready() and not self.bot.is_closed():
+            await self.save_server_count()
+
+    @periodic_server_count_saver.before_loop
+    async def before_periodic_server_count_saver(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(hours=1)
     async def check_birthdays(self):
@@ -157,6 +220,10 @@ class Events(commands.Cog):
                 conn.commit()
         except Exception as e:
             print(f"Birthday task error: {e}")
+
+    @check_birthdays.before_loop
+    async def before_check_birthdays(self):
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
