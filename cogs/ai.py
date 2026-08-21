@@ -44,6 +44,36 @@ class AI(commands.Cog):
         )
 
     async def _generate_ai_reply(self, user_id, display_name, msg_content):
+        from datetime import datetime, timezone, timedelta
+        now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+        is_pro = self.bot.is_pro(user_id)
+        max_daily = 200 if is_pro else 50
+        
+        import sqlite3
+        daily_count = 0
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                row = c.execute("SELECT daily_ai_count, last_reset_date FROM user_subscriptions WHERE user_id = ?", (str(user_id),)).fetchone()
+                if row:
+                    cnt, l_date = row
+                    if l_date == now_date:
+                        daily_count = cnt
+                    else:
+                        c.execute("UPDATE user_subscriptions SET daily_ai_count = 0, last_reset_date = ? WHERE user_id = ?", (now_date, str(user_id)))
+                        conn.commit()
+                else:
+                    c.execute("INSERT INTO user_subscriptions (user_id, plan_type, daily_ai_count, last_reset_date) VALUES (?, 'free', 0, ?)", (str(user_id), now_date))
+                    conn.commit()
+        except Exception:
+            pass
+
+        if daily_count >= max_daily:
+            if is_pro:
+                return None, "「ご主人様、本日のPro会話上限（200回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！」"
+            else:
+                return None, "「本日の無料会話制限（50回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日200回・記憶2倍）をチェックしてみてくださいね♡」"
+
         key = random.choice(self.api_keys)
         if user_id not in self.histories:
             self.histories[user_id] = []
@@ -159,15 +189,23 @@ class AI(commands.Cog):
         if reply:
             history.append({"role": "user", "parts": [user_msg]})
             history.append({"role": "model", "parts": [reply]})
-            if len(history) > 100:
-                self.histories[user_id] = history[-100:]
             
-            # SQLiteへAI対話カウントを加算
+            # Proは往復50件(計100件)、無料は往復25件(計50件)
+            history_limit = 100 if is_pro else 50
+            if len(history) > history_limit:
+                self.histories[user_id] = history[-history_limit:]
+            
+            # SQLiteへAI対話カウントを加算 & 本日の利用回数加算
             try:
                 with sqlite3.connect("database.db") as conn:
                     c = conn.cursor()
                     c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
                     c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'ai_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(user_id),))
+                    c.execute(
+                        "INSERT INTO user_subscriptions (user_id, daily_ai_count, last_reset_date) VALUES (?, 1, ?) "
+                        "ON CONFLICT(user_id) DO UPDATE SET daily_ai_count = CASE WHEN last_reset_date = ? THEN daily_ai_count + 1 ELSE 1 END, last_reset_date = ?",
+                        (str(user_id), now_date, now_date, now_date)
+                    )
                     conn.commit()
             except Exception:
                 pass
@@ -182,7 +220,7 @@ class AI(commands.Cog):
             else:
                 return None, f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」"
 
-    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（往復50件記憶）")
+    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（無料:1日50回/Pro:1日200回）")
     async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
         if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
             return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
@@ -221,13 +259,35 @@ class AI(commands.Cog):
         await interaction.response.defer()
         user_id = str(interaction.user.id)
         
+        from datetime import datetime, timezone, timedelta
+        now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+        is_pro = self.bot.is_pro(user_id)
+        max_diary = 3 if is_pro else 1
+        
+        diary_count = 0
+        import sqlite3
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute("CREATE TABLE IF NOT EXISTS diary_logs (user_id TEXT, date TEXT, count INTEGER, PRIMARY KEY (user_id, date))")
+                row = c.execute("SELECT count FROM diary_logs WHERE user_id = ? AND date = ?", (user_id, now_date)).fetchone()
+                if row:
+                    diary_count = row[0]
+        except Exception:
+            pass
+
+        if diary_count >= max_diary:
+            if not is_pro:
+                return await interaction.followup.send("「絵日記は1日1回までですよ！また明日読んであげますね♡\n※Proプランなら1日3回まで観察絵日記が読めますよ (`/pro`)」", ephemeral=True)
+            else:
+                return await interaction.followup.send("「本日の観察絵日記の上限（1日3回）に達しました！また明日たくさん書いてあげますね♡」", ephemeral=True)
+
         # Get user context
         u_data = self.bot.get_user_data(user_id)
         pts = u_data.get("points", 0)
         ai_count = 0
         cmd_count = 0
         
-        import sqlite3
         try:
             with sqlite3.connect("database.db") as conn:
                 c = conn.cursor()
@@ -261,6 +321,18 @@ class AI(commands.Cog):
                 reply = response.text
         except Exception:
             reply = "「……日記？ まだ書いてませんよ。また後で見に来なさい。」"
+
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                c.execute(
+                    "INSERT INTO diary_logs (user_id, date, count) VALUES (?, ?, 1) "
+                    "ON CONFLICT(user_id, date) DO UPDATE SET count = count + 1",
+                    (user_id, now_date)
+                )
+                conn.commit()
+        except Exception:
+            pass
             
         embed = discord.Embed(title=f"📖 まきぐもの観察絵日記 - {interaction.user.display_name}編", description=reply, color=0xffb6c1)
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
@@ -270,8 +342,18 @@ class AI(commands.Cog):
     @app_commands.describe(内容="AIに覚えておいてほしいこと（空欄でメモを削除します）")
     async def memo(self, interaction: discord.Interaction, 内容: str = None):
         user_id = str(interaction.user.id)
-        import sqlite3
+        is_pro = self.bot.is_pro(user_id)
+        max_len = 300 if is_pro else 100
+        
         await interaction.response.defer(ephemeral=True)
+
+        if 内容 and len(内容) > max_len:
+            if not is_pro:
+                return await interaction.followup.send(f"❌ メモは100文字以内で入力してください！（現在: {len(内容)}文字）\n※Proプランに加入すると最大300文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+            else:
+                return await interaction.followup.send(f"❌ メモは300文字以内で入力してください！（現在: {len(内容)}文字）", ephemeral=True)
+
+        import sqlite3
         try:
             with sqlite3.connect("database.db") as conn:
                 c = conn.cursor()
@@ -286,7 +368,7 @@ class AI(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"❌ メモ帳の書き込みに失敗しました: {e}", ephemeral=True)
 
-    @app_commands.command(name="reset_ai", description="まきぐもAIとの会話記憶（過去50ターン分）をリセットします")
+    @app_commands.command(name="reset_ai", description="まきぐもAIとの会話記憶をリセットします")
     async def reset_ai(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
         if user_id in self.histories:
@@ -332,10 +414,18 @@ class AI(commands.Cog):
     @app_commands.describe(プロンプト="まきぐもAIへの指示文（ZETAのキャラクタープロンプト）。空欄でクリア（リセット）します")
     async def user_settings(self, interaction: discord.Interaction, プロンプト: str = None):
         user_id = str(interaction.user.id)
-        import sqlite3
-        
+        is_pro = self.bot.is_pro(user_id)
+        max_len = 300 if is_pro else 100
+
         await interaction.response.defer(ephemeral=True)
-        
+
+        if プロンプト and len(プロンプト) > max_len:
+            if not is_pro:
+                return await interaction.followup.send(f"❌ カスタムプロンプトは100文字以内で入力してください！（現在: {len(プロンプト)}文字）\n※Proプランに加入すると最大300文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+            else:
+                return await interaction.followup.send(f"❌ カスタムプロンプトは300文字以内で入力してください！（現在: {len(プロンプト)}文字）", ephemeral=True)
+
+        import sqlite3
         try:
             with sqlite3.connect("database.db") as conn:
                 c = conn.cursor()

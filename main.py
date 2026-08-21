@@ -71,6 +71,10 @@ class MakigumoBot(commands.AutoShardedBot):
             c.execute("CREATE TABLE IF NOT EXISTS user_memos (user_id TEXT PRIMARY KEY, memo TEXT)")
             c.execute("CREATE TABLE IF NOT EXISTS user_titles (user_id TEXT PRIMARY KEY, equipped_title TEXT)")
             
+            # Proプラン ＆ Rate Limit 用テーブル
+            c.execute("CREATE TABLE IF NOT EXISTS user_subscriptions (user_id TEXT PRIMARY KEY, plan_type TEXT DEFAULT 'free', expires_at TEXT, daily_ai_count INTEGER DEFAULT 0, last_reset_date TEXT, reminded_3days INTEGER DEFAULT 0)")
+            c.execute("CREATE TABLE IF NOT EXISTS gift_requests (request_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, pay_content TEXT NOT NULL, status TEXT DEFAULT 'pending', created_at TEXT NOT NULL)")
+            
             conn.commit()
             
             # SQLiteから読み込み
@@ -170,6 +174,42 @@ class MakigumoBot(commands.AutoShardedBot):
             self.mark_economy_dirty()
         return self.economy[uid]
 
+    def add_points(self, user_id, amount: int) -> int:
+        user_data = self.get_user_data(user_id)
+        user_data["points"] = user_data.get("points", 0) + amount
+        self.mark_economy_dirty()
+        return user_data["points"]
+
+    def is_pro(self, user_id) -> bool:
+        uid = str(user_id)
+        admin_id = os.getenv('ADMIN_USER_ID')
+        if admin_id and uid == admin_id:
+            return True
+        try:
+            with sqlite3.connect("database.db") as conn:
+                c = conn.cursor()
+                row = c.execute("SELECT plan_type, expires_at FROM user_subscriptions WHERE user_id = ?", (uid,)).fetchone()
+                if not row:
+                    return False
+                plan_type, expires_at = row
+                if plan_type == 'pro_lifetime':
+                    return True
+                elif plan_type == 'pro_monthly' and expires_at:
+                    from datetime import datetime, timezone, timedelta
+                    now = datetime.now(timezone(timedelta(hours=9)))
+                    exp_dt = datetime.fromisoformat(expires_at)
+                    if exp_dt.tzinfo is None:
+                        exp_dt = exp_dt.replace(tzinfo=timezone(timedelta(hours=9)))
+                    if exp_dt > now:
+                        return True
+                    else:
+                        c.execute("UPDATE user_subscriptions SET plan_type = 'free' WHERE user_id = ?", (uid,))
+                        conn.commit()
+                        return False
+        except Exception:
+            pass
+        return False
+
     def get_probability_bonus(self, user_id):
         user_data = self.get_user_data(user_id)
         bonus = 0.0
@@ -184,7 +224,7 @@ class MakigumoBot(commands.AutoShardedBot):
 
     async def setup_hook(self):
         # cogsフォルダ内の各ファイルを読み込む
-        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling']:
+        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling', 'cogs.billing']:
             try:
                 await self.load_extension(cog)
                 print(f"✅ {cog} の読み込みに成功しました")
