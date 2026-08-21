@@ -29,20 +29,26 @@ class Events(commands.Cog):
         self.periodic_server_count_saver.cancel()
 
     def _is_ws_available(self) -> bool:
-        if not self.bot.is_ready() or self.bot.is_closed():
+        try:
+            if not self.bot.is_ready() or self.bot.is_closed():
+                return False
+            if hasattr(self.bot, 'shards') and self.bot.shards:
+                for shard in self.bot.shards.values():
+                    if hasattr(shard, 'is_closed') and shard.is_closed():
+                        return False
+                    if hasattr(shard, 'is_connected') and not shard.is_connected():
+                        return False
+                    if hasattr(shard, 'is_ws_ratelimited') and shard.is_ws_ratelimited():
+                        return False
+            else:
+                if hasattr(self.bot, 'ws') and self.bot.ws is not None:
+                    if getattr(self.bot.ws, 'closed', False):
+                        return False
+                if getattr(self.bot, 'is_ws_ratelimited', None) and self.bot.is_ws_ratelimited():
+                    return False
+            return True
+        except Exception:
             return False
-        if hasattr(self.bot, 'shards') and self.bot.shards:
-            for shard in self.bot.shards.values():
-                if shard.ws is None or getattr(shard.ws, 'closed', True):
-                    return False
-                if getattr(shard.ws, 'is_ratelimited', None) and shard.ws.is_ratelimited():
-                    return False
-        else:
-            if self.bot.ws is None or getattr(self.bot.ws, 'closed', True):
-                return False
-            if getattr(self.bot, 'is_ws_ratelimited', None) and self.bot.is_ws_ratelimited():
-                return False
-        return True
 
     @commands.Cog.listener()
     async def on_ready(self):
