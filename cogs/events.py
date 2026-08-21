@@ -210,10 +210,15 @@ class Events(commands.Cog):
                         try:
                             user = await self.bot.fetch_user(int(uid))
                             if user:
-                                msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！**\n\n「……別に、あなたが生まれた日なんて興味ありませんけど。\nでも、わざわざ私の隣にいてくれる物好きなんてあなたくらいですからね。\n……ほら、誕生日プレゼントの1000ポインツです。大事に使いなさいよねっ！///」"
+                                is_pro = self.bot.is_pro(int(uid))
+                                pts = 3000 if is_pro else 1000
+                                if is_pro:
+                                    msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！ (👑 Pro会員特別お祝い)**\n\n「……ご主人様、お誕生日おめでとうございます♡\nいつもまきぐもを応援してくれて、本当に……感謝してますよ？///\n……これ、特別な誕生日プレゼントの【3000ポインツ】です！ これからもずっと、私の隣にいてくださいね……っ！♡」"
+                                else:
+                                    msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！**\n\n「……別に、あなたが生まれた日なんて興味ありませんけど。\nでも、わざわざ私の隣にいてくれる物好きなんてあなたくらいですからね。\n……ほら、誕生日プレゼントの1000ポインツです。大事に使いなさいよねっ！///」"
                                 await user.send(msg)
-                                # 1000pts付与
-                                self.bot.add_points(str(user.id), 1000)
+                                # ポインツ付与
+                                self.bot.add_points(str(user.id), pts)
                                 c.execute("UPDATE birthdays SET last_notified = ? WHERE user_id = ?", (y, uid))
                         except Exception:
                             pass

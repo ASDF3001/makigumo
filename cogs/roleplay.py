@@ -11,9 +11,9 @@ class HelpView(discord.ui.View):
     def get_embed(self, category):
         if category == "home":
             e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバー＆DMに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
-            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（会話記憶30件）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
+            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（無料50回/Pro200回・記憶2倍）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
             e.add_field(name="💬 チャット自動反応ワード (サーバー内)", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた` / `まきぐそ`", inline=False)
-            e.add_field(name="🔗 公式リンク・支援", value="`/server` : 公式Discordサーバー\n`/donate` : 寄付・支援方法のご案内（開発者: rds9）", inline=False)
+            e.add_field(name="🔗 公式リンク・Proプラン", value="`/pro` : Proプラン案内＆申込（月100円/買い切り500円）\n`/plan` : 現在のプラン＆残り会話数確認\n`/server` : 公式Discordサーバー", inline=False)
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
@@ -340,11 +340,13 @@ class Roleplay(commands.Cog):
         rp_cmds = "`/aege` `/おねだり` `/添い寝` `/耳打ち` `/罵倒` `/看病` `/嫉妬` `/お仕置き`"
         eco_cmds = "`/slots` `/coinflip` `/rps` `/daily` `/give` `/ranking` `/stats` `/titles`"
         ai_cmds = "`/ai` `/reset_ai` `/ai_mode` `/user_settings` `/memo` `/diary`"
+        pro_cmds = "`/pro` (Proプラン案内) `/plan` (プラン状況確認) `/pay` (支払い申請)"
         misc_cmds = "`/omikuji` `/present` `/gacha` `/相性` `/ダイス_罰ゲーム` `/birthday` `/suggest` `/command`"
         
         embed.add_field(name="🎀 ロールプレイ", value=rp_cmds, inline=False)
         embed.add_field(name="💰 経済・ランキング", value=eco_cmds, inline=False)
         embed.add_field(name="🧠 AI・記憶", value=ai_cmds, inline=False)
+        embed.add_field(name="💎 Proプラン", value=pro_cmds, inline=False)
         embed.add_field(name="🎲 おみくじ・その他", value=misc_cmds, inline=False)
         
         embed.set_footer(text="※AI機能や一部コマンドには専用ポイント(pts)を消費するものもあります")

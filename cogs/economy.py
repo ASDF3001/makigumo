@@ -53,10 +53,15 @@ class Economy(commands.Cog):
             h, m = int(left // 3600), int((left % 3600) // 60)
             return await interaction.response.send_message(f"「次は {h}時間{m}分後 ですからね！」", ephemeral=True)
 
-        user_data["points"] += 500
+        is_pro = self.bot.is_pro(interaction.user.id)
+        daily_pt = 1000 if is_pro else 500
+        user_data["points"] += daily_pt
         user_data["last_daily"] = now
         self.bot.mark_economy_dirty()
-        await interaction.response.send_message(f"「ほら、今日の配給【500 pt】です。現在の所持金は {user_data['points']} ptですよ。」")
+        if is_pro:
+            await interaction.response.send_message(f"「ご主人様、いつも応援ありがとうございます♡ 今日の配給【{daily_pt} pt (Proボーナス +500 pt)】ですよ。現在の所持金は {user_data['points']} ptです！」")
+        else:
+            await interaction.response.send_message(f"「ほら、今日の配給【{daily_pt} pt】です。現在の所持金は {user_data['points']} ptですよ。」")
 
     @app_commands.command(name="gamble", description="まきぐもと変態ポインツを賭けて勝負します（倍率はランダム）")
     async def gamble(self, interaction: discord.Interaction, 賭け金: int):
@@ -313,9 +318,16 @@ class Economy(commands.Cog):
 
         win_rate = min(90, 40 + int(bonus * 100))
 
-        embed = discord.Embed(title=f"📋 変態カルテ & ステータス - {target_user.display_name}", color=0x9370db)
+        is_pro = self.bot.is_pro(target_user.id)
+        color = 0xFFD700 if is_pro else 0x9370db
+        title_prefix = "✨ PRO " if is_pro else ""
+
+        embed = discord.Embed(title=f"📋 {title_prefix}変態カルテ & ステータス - {target_user.display_name}", color=color)
         if target_user.display_avatar:
             embed.set_thumbnail(url=target_user.display_avatar.url)
+
+        if is_pro:
+            embed.add_field(name="👑 会員ステータス", value="`✨ PRO MEMBER (特別会員) ✨`", inline=False)
 
         embed.add_field(name="🏷️ 変態称号", value=f"**{equipped_title}**", inline=False)
         embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
@@ -344,6 +356,7 @@ class Economy(commands.Cog):
     async def titles(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
+        is_pro = self.bot.is_pro(user_id)
         
         lvl_info = getattr(self.bot, 'levels', {}).get(user_id, {"level": 1})
         lvl = lvl_info.get("level", 1)
@@ -372,6 +385,11 @@ class Economy(commands.Cog):
         if lvl >= 30: unlocked.append("🌌 宇宙規模の変態")
         if present_count >= 10: unlocked.append("💸 上客パパ活おぢさん")
         if present_count >= 50: unlocked.append("💍 まきぐものATM")
+
+        # Pro限定称号
+        if is_pro:
+            unlocked.append("👑 まきぐもパトロン")
+            unlocked.append("💎 筆頭変態紳士")
 
         options = [discord.SelectOption(label=t, value=t) for t in unlocked]
         
