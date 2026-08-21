@@ -247,6 +247,7 @@ class Billing(commands.Cog):
         )
         view = ProGuidanceView(self.bot)
 
+        await interaction.response.defer(ephemeral=True)
         # DMで送信を試みる
         dm_sent = False
         try:
@@ -257,13 +258,13 @@ class Billing(commands.Cog):
             dm_sent = False
 
         if dm_sent:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "💌 **DMにProプランのご案内を送信しました！**\n（DMを開いてご確認くださいね♡）",
                 ephemeral=True
             )
         else:
             # DMが閉じられている場合はエフェメラルで直接表示
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "⚠️ DMへの送信がブロックされています。こちらで直接表示しますね！",
                 embed=embed,
                 view=view,
@@ -273,6 +274,7 @@ class Billing(commands.Cog):
     @app_commands.command(name="pro_pay", description="PayPay送金リンクまたはAmazonギフトコードを提出してProプランを申請します")
     @app_commands.describe(content="PayPay送金リンク(https://...) または Amazonギフトコード")
     async def pro_pay_cmd(self, interaction: discord.Interaction, content: str):
+        await interaction.response.defer(ephemeral=True)
         content = content.strip()
         user_id = str(interaction.user.id)
         now_str = datetime.now(timezone(timedelta(hours=9))).isoformat()
@@ -299,7 +301,7 @@ class Billing(commands.Cog):
             ),
             color=0xffb6c1
         )
-        await interaction.response.send_message(embed=embed, view=cancel_view, ephemeral=True)
+        await interaction.followup.send(embed=embed, view=cancel_view, ephemeral=True)
 
         # 管理者へ通知
         modal_helper = PaymentModal(self.bot)
@@ -307,6 +309,7 @@ class Billing(commands.Cog):
 
     @app_commands.command(name="plan", description="現在のプランと本日のAI会話残り回数を確認します")
     async def plan_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
         is_pro = self.bot.is_pro(user_id)
         
@@ -368,7 +371,7 @@ class Billing(commands.Cog):
         else:
             embed.set_footer(text="✨ いつもまきぐもを応援してくれてありがとうございます♡")
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="grant_pro", description="【管理者限定】指定したユーザーにProプランを手動で付与します")
     @app_commands.describe(user="付与対象のユーザー", plan_type="プランの種類", days="有効日数 (買い切りは9999)")
@@ -378,12 +381,13 @@ class Billing(commands.Cog):
         app_commands.Choice(name="❌ 無料プランに戻す (free)", value="free"),
     ])
     async def grant_pro_cmd(self, interaction: discord.Interaction, user: discord.User, plan_type: app_commands.Choice[str], days: int = 30):
+        await interaction.response.defer(ephemeral=True)
         admin_id = os.getenv('ADMIN_USER_ID')
         app_info = await self.bot.application_info()
         is_admin = (admin_id and str(interaction.user.id) == admin_id) or (interaction.user.id == app_info.owner.id)
 
         if not is_admin:
-            return await interaction.response.send_message("❌ このコマンドはBot管理者のみ実行できます。", ephemeral=True)
+            return await interaction.followup.send("❌ このコマンドはBot管理者のみ実行できます。", ephemeral=True)
 
         target_uid = str(user.id)
         now = datetime.now(timezone(timedelta(hours=9)))
@@ -403,7 +407,7 @@ class Billing(commands.Cog):
             )
             conn.commit()
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {user.mention} (`{user.display_name}`) に **{plan_type.name}** を設定しました。（期限: `{expires_at}`）",
             ephemeral=True
         )

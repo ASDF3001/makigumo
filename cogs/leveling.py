@@ -51,6 +51,7 @@ class Leveling(commands.Cog):
 
     @app_commands.command(name="level", description="自分のチャットレベルと経験値を確認します")
     async def level_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         if not hasattr(self.bot, 'levels'):
             self.bot.levels = {}
             
@@ -69,7 +70,7 @@ class Leveling(commands.Cog):
         else: title = "伝説の変態"
         
         embed.add_field(name="称号", value=title, inline=False)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Leveling(bot))

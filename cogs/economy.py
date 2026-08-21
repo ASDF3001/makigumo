@@ -46,12 +46,13 @@ class Economy(commands.Cog):
 
     @app_commands.command(name="daily", description="1日1回まきぐもから変態ポインツをもらえます")
     async def daily(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         user_data = self.bot.get_user_data(interaction.user.id)
         now = datetime.now().timestamp()
         if now - user_data["last_daily"] < 86400:
             left = 86400 - (now - user_data["last_daily"])
             h, m = int(left // 3600), int((left % 3600) // 60)
-            return await interaction.response.send_message(f"「次は {h}時間{m}分後 ですからね！」", ephemeral=True)
+            return await interaction.followup.send(f"「次は {h}時間{m}分後 ですからね！」", ephemeral=True)
 
         is_pro = self.bot.is_pro(interaction.user.id)
         daily_pt = 1000 if is_pro else 500
@@ -59,15 +60,16 @@ class Economy(commands.Cog):
         user_data["last_daily"] = now
         self.bot.mark_economy_dirty()
         if is_pro:
-            await interaction.response.send_message(f"「ご主人様、いつも応援ありがとうございます♡ 今日の配給【{daily_pt} pt (Proボーナス +500 pt)】ですよ。現在の所持金は {user_data['points']} ptです！」")
+            await interaction.followup.send(f"「ご主人様、いつも応援ありがとうございます♡ 今日の配給【{daily_pt} pt (Proボーナス +500 pt)】ですよ。現在の所持金は {user_data['points']} ptです！」")
         else:
-            await interaction.response.send_message(f"「ほら、今日の配給【{daily_pt} pt】です。現在の所持金は {user_data['points']} ptですよ。」")
+            await interaction.followup.send(f"「ほら、今日の配給【{daily_pt} pt】です。現在の所持金は {user_data['points']} ptですよ。」")
 
     @app_commands.command(name="gamble", description="まきぐもと変態ポインツを賭けて勝負します（倍率はランダム）")
     async def gamble(self, interaction: discord.Interaction, 賭け金: int):
+        await interaction.response.defer()
         user_data = self.bot.get_user_data(interaction.user.id)
         if 賭け金 <= 0 or user_data["points"] < 賭け金:
-            return await interaction.response.send_message("「ポインツが足りないか、賭け金がおかしいですよ！」", ephemeral=True)
+            return await interaction.followup.send("「ポインツが足りないか、賭け金がおかしいですよ！」", ephemeral=True)
 
         roll = random.randint(1, 100)
         bonus = self.bot.get_probability_bonus(interaction.user.id)
@@ -83,13 +85,14 @@ class Economy(commands.Cog):
             msg = f"🎲 **カジノ**\n「あははっ！ まきぐものの勝ちです！ {賭け金} ptは没収ですからね！」"
 
         self.bot.mark_economy_dirty()
-        await interaction.response.send_message(msg)
+        await interaction.followup.send(msg)
 
     @app_commands.command(name="slot", description="変態ポインツを賭けてまきぐもスロットを回します")
     async def slot(self, interaction: discord.Interaction, 賭け金: int):
+        await interaction.response.defer()
         user_data = self.bot.get_user_data(interaction.user.id)
         if 賭け金 <= 0 or user_data["points"] < 賭け金:
-            return await interaction.response.send_message("「賭け金が足りないですよ？」", ephemeral=True)
+            return await interaction.followup.send("「賭け金が足りないですよ？」", ephemeral=True)
 
         user_data["points"] -= 賭け金
         symbols = ["🍒", "🍇", "🍉", "💖", "💡"]
@@ -117,12 +120,13 @@ class Economy(commands.Cog):
         embed.add_field(name="結果", value=f"**[ {res[0]} | {res[1]} | {res[2]} ]**", inline=False)
         embed.add_field(name="一言", value=msg, inline=False)
         embed.set_footer(text=f"💰 所持金: {user_data['points']} pt" + (f" | 🎲 幸運補正: +{int(bonus*100)}%" if bonus > 0 else ""))
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="shop", description="変態ポインツで色々なアイテムを購入できます♡")
     async def shop(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         if not self.bot.shop_items:
-            return await interaction.response.send_message("「ショップがまだ空っぽです…」", ephemeral=True)
+            return await interaction.followup.send("「ショップがまだ空っぽです…」", ephemeral=True)
 
         embed = discord.Embed(title="🛍️ まきぐも特製ショップ", description="ポインツを使ってアイテムを購入できるよ♡", color=0xffb6c1)
         for item_id, item in self.bot.shop_items.items():
@@ -130,10 +134,11 @@ class Economy(commands.Cog):
             b_txt = f"\n🎲 ギャンブル勝率 +{b*100:.0f}%" if b > 0 else ""
             embed.add_field(name=f"{item['name']}", value=f"{item['description']}{b_txt}\n💰 {item['price']} pt", inline=False)
 
-        await interaction.response.send_message(embed=embed, view=ShopView(self.bot))
+        await interaction.followup.send(embed=embed, view=ShopView(self.bot))
 
     @app_commands.command(name="work", description="まきぐものお手伝いをしてポインツを稼ぎます（3時間に1回）")
     async def work(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         user_data = self.bot.get_user_data(interaction.user.id)
         now = datetime.now().timestamp()
 
@@ -141,7 +146,7 @@ class Economy(commands.Cog):
         if now - last_work < 10800:
             left = 10800 - (now - last_work)
             h, m = int(left // 3600), int((left % 3600) // 60)
-            return await interaction.response.send_message(f"「さっき働いたばかりじゃないですか！次は {h}時間{m}分後 です！」", ephemeral=True)
+            return await interaction.followup.send(f"「さっき働いたばかりじゃないですか！次は {h}時間{m}分後 です！」", ephemeral=True)
 
         user_data["last_work"] = now
 
@@ -161,20 +166,21 @@ class Economy(commands.Cog):
 
         action_text = "獲得" if scenario["pt"] > 0 else "没収"
         pt_abs = abs(scenario["pt"])
-        await interaction.response.send_message(f"🧹 **アルバイト**\n{scenario['msg']}\n\n(💰 {pt_abs} pt {action_text}！ 現在: {user_data['points']} pt)")
+        await interaction.followup.send(f"🧹 **アルバイト**\n{scenario['msg']}\n\n(💰 {pt_abs} pt {action_text}！ 現在: {user_data['points']} pt)")
 
     @app_commands.command(name="pay", description="他の変態さんにポインツを貢ぎます（送金）")
     async def pay(self, interaction: discord.Interaction, 相手: discord.Member, 額: int):
+        await interaction.response.defer()
         if 額 <= 0:
-            return await interaction.response.send_message("「1pt以上じゃないと送れませんよ！」", ephemeral=True)
+            return await interaction.followup.send("「1pt以上じゃないと送れませんよ！」", ephemeral=True)
         if 相手.bot:
-            return await interaction.response.send_message("「Botに貢いでどうするんですか……私にください！」", ephemeral=True)
+            return await interaction.followup.send("「Botに貢いでどうするんですか……私にください！」", ephemeral=True)
         if 相手.id == interaction.user.id:
-            return await interaction.response.send_message("「自分に送ってどうするんですか？ 虚しくないですか？」", ephemeral=True)
+            return await interaction.followup.send("「自分に送ってどうするんですか？ 虚しくないですか？」", ephemeral=True)
 
         sender_data = self.bot.get_user_data(interaction.user.id)
         if sender_data["points"] < 額:
-            return await interaction.response.send_message("「ポインツが足りないですよ！ 見栄を張らないでください！」", ephemeral=True)
+            return await interaction.followup.send("「ポインツが足りないですよ！ 見栄を張らないでください！」", ephemeral=True)
 
         receiver_data = self.bot.get_user_data(相手.id)
 
@@ -182,7 +188,7 @@ class Economy(commands.Cog):
         receiver_data["points"] += 額
         self.bot.mark_economy_dirty()
 
-        await interaction.response.send_message(f"💸 **送金完了**\n「{interaction.user.mention}さんが、{相手.mention}さんに {額} pt 貢ぎましたよ！ 何を企んでるんですか…？」")
+        await interaction.followup.send(f"💸 **送金完了**\n「{interaction.user.mention}さんが、{相手.mention}さんに {額} pt 貢ぎましたよ！ 何を企んでるんですか…？」")
 
     @app_commands.command(name="ranking", description="各種変態ランキングトップ10を表示します")
     @app_commands.choices(種類=[
@@ -193,6 +199,7 @@ class Economy(commands.Cog):
         app_commands.Choice(name="📊 レベルランキング", value="level"),
     ])
     async def ranking(self, interaction: discord.Interaction, 種類: app_commands.Choice[str] = None):
+        await interaction.response.defer()
         rank_type = 種類.value if 種類 else "points"
         import sqlite3
 
@@ -246,38 +253,40 @@ class Economy(commands.Cog):
             desc = "まだランキングデータがありません。"
 
         embed.description = desc
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="use", description="所持している消費アイテムを使います")
     async def use(self, interaction: discord.Interaction, アイテムid: str):
+        await interaction.response.defer(ephemeral=True)
         user_data = self.bot.get_user_data(interaction.user.id)
         inventory = user_data.get("inventory", {})
 
         if inventory.get(アイテムid, 0) <= 0:
-            return await interaction.response.send_message("「そのアイテムは持っていませんよ！」", ephemeral=True)
+            return await interaction.followup.send("「そのアイテムは持っていませんよ！」", ephemeral=True)
 
         if アイテムid == "apology_parfait":
             inventory[アイテムid] -= 1
             user_data["points"] += 1000
             self.bot.mark_economy_dirty()
-            await interaction.response.send_message("🍨 **お詫びの高級パフェを使用**\n「あむ……んっ、美味しいです♡ まぁ、少しは許してあげなくもないです。（ボーナス 1000 pt もらった！）」")
+            await interaction.followup.send("🍨 **お詫びの高級パフェを使用**\n「あむ……んっ、美味しいです♡ まぁ、少しは許してあげなくもないです。（ボーナス 1000 pt もらった！）」", ephemeral=True)
 
         elif アイテムid == "coffee":
             inventory[アイテムid] -= 1
             self.bot.mark_economy_dirty()
-            await interaction.response.send_message("☕ **まきぐも特製コーヒーを飲んだ**\n「ほら、熱いから気をつけて飲んでくださいね……？ ふふっ、美味しいですか？♡」")
+            await interaction.followup.send("☕ **まきぐも特製コーヒーを飲んだ**\n「ほら、熱いから気をつけて飲んでくださいね……？ ふふっ、美味しいですか？♡」", ephemeral=True)
 
         elif アイテムid == "cheat_note":
             inventory[アイテムid] -= 1
             user_data["points"] += 300
             self.bot.mark_economy_dirty()
-            await interaction.response.send_message("📝 **カンニングペーパーを使用**\n「ふふっ、そんなの見て勉強してるんですか？……可愛いところありますね♡（300 pt ゲット！）」")
+            await interaction.followup.send("📝 **カンニングペーパーを使用**\n「ふふっ、そんなの見て勉強してるんですか？……可愛いところありますね♡（300 pt ゲット！）」", ephemeral=True)
 
         else:
-            await interaction.response.send_message("「そのアイテムは持っているだけで効果がある装備アイテム（幸運の雲など）ですよ！」", ephemeral=True)
+            await interaction.followup.send("「そのアイテムは持っているだけで効果がある装備アイテム（幸運の雲など）ですよ！」", ephemeral=True)
 
     @app_commands.command(name="stats", description="あなたの変態カルテ（レベル・ポインツ・勝率・AI対話数・所持アイテム）を確認します")
     async def stats(self, interaction: discord.Interaction, ターゲット: discord.Member = None):
+        await interaction.response.defer()
         target_user = ターゲット or interaction.user
         user_id = str(target_user.id)
         
@@ -350,7 +359,7 @@ class Economy(commands.Cog):
         embed.add_field(name="🎒 所持アイテム", value=inv_text, inline=False)
         embed.set_footer(text="まきぐもぼっとがあなたの変態行為を24時間監視中♡")
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="titles", description="解放した称号を確認し、装備します")
     async def titles(self, interaction: discord.Interaction):

@@ -45,25 +45,27 @@ class Roleplay(commands.Cog):
 
     @app_commands.command(name="help", description="まきぐもちゃんの使い方・コマンド一覧を表示します")
     async def help_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         view = HelpView()
-        await interaction.response.send_message(embed=view.get_embed("home"), view=view)
+        await interaction.followup.send(embed=view.get_embed("home"), view=view)
 
     @app_commands.command(name="update", description="まきぐもちゃんのアップデート内容を確認します")
     @app_commands.describe(version="確認したいバージョン（例: v3.0）。空欄で最新のものを表示します")
     async def update_cmd(self, interaction: discord.Interaction, version: str = None):
+        await interaction.response.defer(ephemeral=True)
         update_dir = "update"
         
         if not os.path.exists(update_dir):
-            return await interaction.response.send_message("「まだアップデート情報がないみたいです…」", ephemeral=True)
+            return await interaction.followup.send("「まだアップデート情報がないみたいです…」", ephemeral=True)
 
         files = [f for f in os.listdir(update_dir) if f.endswith(".txt")]
         if not files:
-            return await interaction.response.send_message("「アップデート情報が空っぽです！」", ephemeral=True)
+            return await interaction.followup.send("「アップデート情報が空っぽです！」", ephemeral=True)
 
         if version:
             target_file = f"{version}.txt" if not version.endswith(".txt") else version
             if target_file not in files:
-                return await interaction.response.send_message(f"「{version} のアップデート情報は見つかりませんでした…」", ephemeral=True)
+                return await interaction.followup.send(f"「{version} のアップデート情報は見つかりませんでした…」", ephemeral=True)
         else:
             files.sort(reverse=True)
             target_file = files[0]
@@ -78,19 +80,19 @@ class Roleplay(commands.Cog):
 
         display_version = target_file.replace('.txt', '')
         embed = discord.Embed(title=f"☁️ まきぐも アップデート情報 ({display_version})", description=content, color=0x87ceeb)
-        # 修正: 本人しか見えないように ephemeral=True を追加
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="version", description="確認できるアップデートのバージョン一覧を表示します（最新10件まで）")
     async def version_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         update_dir = "update"
         
         if not os.path.exists(update_dir):
-            return await interaction.response.send_message("「まだアップデート情報がないみたいです…」", ephemeral=True)
+            return await interaction.followup.send("「まだアップデート情報がないみたいです…」", ephemeral=True)
 
         files = [f for f in os.listdir(update_dir) if f.endswith(".txt")]
         if not files:
-            return await interaction.response.send_message("「アップデート情報が空っぽです！」", ephemeral=True)
+            return await interaction.followup.send("「アップデート情報が空っぽです！」", ephemeral=True)
 
         files.sort(reverse=True)
         recent_files = files[:10]
@@ -100,13 +102,13 @@ class Roleplay(commands.Cog):
         embed = discord.Embed(title="☁️ 閲覧可能なバージョン一覧", description=version_list, color=0x87ceeb)
         embed.set_footer(text="内容を見るには /update [バージョン] と入力してね！")
         
-        # 修正: 本人しか見えないように ephemeral=True を追加
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="setting", description="まきぐもが反応するチャンネルを設定します")
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_channels=True)
     async def setting(self, interaction: discord.Interaction, メイン: discord.TextChannel, サブ1: discord.TextChannel = None, サブ2: discord.TextChannel = None, サブ3: discord.TextChannel = None, サブ4: discord.TextChannel = None):
+        await interaction.response.defer()
         guild_id = str(interaction.guild_id)
         raw_channels = [メイン.id]
         if サブ1: raw_channels.append(サブ1.id)
@@ -115,23 +117,26 @@ class Roleplay(commands.Cog):
         if サブ4: raw_channels.append(サブ4.id)
 
         valid = [cid for cid in set(raw_channels) if isinstance(self.bot.get_channel(cid), discord.TextChannel)]
-        if not valid: return await interaction.response.send_message("❌ 指定チャンネルが無効です", ephemeral=True)
+        if not valid: return await interaction.followup.send("❌ 指定チャンネルが無効です", ephemeral=True)
 
         self.bot.channel_settings[guild_id] = valid
         self.bot.save_settings()
-        await interaction.response.send_message(f"了解です♡ これから指定されたチャンネルでのみお返事しますね。")
+        await interaction.followup.send(f"了解です♡ これから指定されたチャンネルでのみお返事しますね。")
 
     @app_commands.command(name="invite", description="まきぐもちゃんを別のサーバーに招待するリンクを表示します")
     async def invite(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         url = f"https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}&permissions=277025508352&scope=bot%20applications.commands"
-        await interaction.response.send_message(f"「こちらのリンクから招待してくださいね！」\n{url}")
+        await interaction.followup.send(f"「こちらのリンクから招待してくださいね！」\n{url}")
 
     @app_commands.command(name="server", description="まきぐもぼっと公式Discordサーバーの招待リンクを表示します")
     async def server(self, interaction: discord.Interaction):
-        await interaction.response.send_message("☁️ **まきぐもぼっと 公式Discordサーバー**\nhttps://discord.gg/kxFCwCj2eX")
+        await interaction.response.defer()
+        await interaction.followup.send("☁️ **まきぐもぼっと 公式Discordサーバー**\nhttps://discord.gg/kxFCwCj2eX")
 
     @app_commands.command(name="donate", description="まきぐもちゃん＆開発者（rds9）への寄付・支援方法をご案内します")
     async def donate(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         msg = (
             "💖 **まきぐもちゃん 寄付・支援のご案内** 💖\n\n"
             "まきぐもちゃんの開発・サーバー維持費用をサポートしていただける変態さんは、"
@@ -139,7 +144,7 @@ class Roleplay(commands.Cog):
             "メール: [rds9discord@outlook.jp](mailto:rds9discord@outlook.jp) までご連絡いただけますと非常に助かります！✨\n\n"
             "温かいご支援、心よりお待ちしております！♡"
         )
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.followup.send(msg, ephemeral=True)
 
     @app_commands.command(name="豆知識", description="まきぐもちゃんのヒミツの豆知識を披露します")
     async def mamechishiki(self, interaction: discord.Interaction):
