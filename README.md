@@ -12,7 +12,7 @@
 - 💾 **SQLite3 データベース完全移行**: 設定やポインツ・レベルデータはすべて `database.db` に安全かつ高速に自動保存。
 - 🔗 **公式サーバー＆寄付機能 (`/server`, `/donate`)**: 公式Discordサーバーリンクや開発者（rds9）への支援窓口を完備。
 - 🟣 **常時「配信中（Streaming）」＆3秒爆速ステータスローテーション**: 5秒以下の高速で監視メンバー数、監視サーバー数、ping、Powered by rds9 をローテーション表示（`https://rds9.pages.dev/` リンク付き）。
-
+- 📖 **全コマンド仕様書**: 実装されている全コマンドの解説・引数一覧は [FEATURES.md](FEATURES.md) を参照してください。
 ## 必要な環境
 - Python 3.9 以上推奨
 - 依存ライブラリ: `discord.py`, `python-dotenv`, `google-genai` (または `google-generativeai`)
