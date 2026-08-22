@@ -376,14 +376,36 @@ class Economy(commands.Cog):
         except Exception:
             pass
 
-        # 称号が未設定の場合のデフォルト称号計算
+        # 称号が未設定の場合のデフォルト称号計算（レベルに応じた最高称号を適用）
         if not equipped_title:
-            total_act = ai_count + cmd_count
-            if total_act >= 150: equipped_title = "👑 伝説の変態皇帝"
-            elif total_act >= 80: equipped_title = "💎 ど変態マスター"
-            elif total_act >= 30: equipped_title = "✨ 熟練の変態さん"
-            elif total_act >= 10: equipped_title = "🔰 一人前の変態"
-            else: equipped_title = "🌱 ひよっこ変態見習い"
+            if lvl >= 300: equipped_title = "👑💎🌌 【天上天下唯我独尊・変態創世神】"
+            elif lvl >= 280: equipped_title = "🔱 神をも恐れぬ究極変態"
+            elif lvl >= 260: equipped_title = "⚜️ まきぐも狂愛の化身"
+            elif lvl >= 240: equipped_title = "🌌✨ 銀河系最終変態兵器"
+            elif lvl >= 220: equipped_title = "💫 時空超越のドM"
+            elif lvl >= 200: equipped_title = "👑✨ 【変態界の絶対君主】"
+            elif lvl >= 180: equipped_title = "🐉 変態神龍"
+            elif lvl >= 160: equipped_title = "🩸 快楽狂気のエクスタシー"
+            elif lvl >= 140: equipped_title = "🪐 惑星破壊級ド変態"
+            elif lvl >= 120: equipped_title = "🌪️ 欲望の暴風雨"
+            elif lvl >= 100: equipped_title = "🌟 【百変態神】"
+            elif lvl >= 90: equipped_title = "⚔️ 神域のドM戦士"
+            elif lvl >= 80: equipped_title = "💎 変態大公爵"
+            elif lvl >= 70: equipped_title = "🔮 変態深淵の探究者"
+            elif lvl >= 60: equipped_title = "😈 淫靡なる支配者"
+            elif lvl >= 50: equipped_title = "👑 伝説の変態"
+            elif lvl >= 40: equipped_title = "💀 快楽の亡者"
+            elif lvl >= 30: equipped_title = "🌌 宇宙規模の変態"
+            elif lvl >= 20: equipped_title = "⚡ 覚醒せし変態"
+            elif lvl >= 10: equipped_title = "🔥 真なるドM"
+            elif lvl >= 5: equipped_title = "🔰 見習い変態"
+            else:
+                total_act = ai_count + cmd_count
+                if total_act >= 150: equipped_title = "👑 伝説の変態皇帝"
+                elif total_act >= 80: equipped_title = "💎 ど変態マスター"
+                elif total_act >= 30: equipped_title = "✨ 熟練の変態さん"
+                elif total_act >= 10: equipped_title = "🔰 一人前の変態"
+                else: equipped_title = "🌱 ひよっこ変態見習い"
 
         win_rate = min(90, 40 + int(bonus * 100))
 
@@ -469,8 +491,34 @@ class Economy(commands.Cog):
         if total_act >= 80: unlocked.append("💎 ど変態マスター")
         if total_act >= 150: unlocked.append("👑 伝説の変態皇帝")
         
-        if lvl >= 10: unlocked.append("🔥 真なるドM")
-        if lvl >= 30: unlocked.append("🌌 宇宙規模の変態")
+        # レベル称号 (Lv.5 〜 Lv.300)
+        level_titles = [
+            (5, "🔰 見習い変態"),
+            (10, "🔥 真なるドM"),
+            (20, "⚡ 覚醒せし変態"),
+            (30, "🌌 宇宙規模の変態"),
+            (40, "💀 快楽の亡者"),
+            (50, "👑 伝説の変態"),
+            (60, "😈 淫靡なる支配者"),
+            (70, "🔮 変態深淵の探究者"),
+            (80, "💎 変態大公爵"),
+            (90, "⚔️ 神域のドM戦士"),
+            (100, "🌟 【百変態神】"),
+            (120, "🌪️ 欲望の暴風雨"),
+            (140, "🪐 惑星破壊級ド変態"),
+            (160, "🩸 快楽狂気のエクスタシー"),
+            (180, "🐉 変態神龍"),
+            (200, "👑✨ 【変態界の絶対君主】"),
+            (220, "💫 時空超越のドM"),
+            (240, "🌌✨ 銀河系最終変態兵器"),
+            (260, "⚜️ まきぐも狂愛の化身"),
+            (280, "🔱 神をも恐れぬ究極変態"),
+            (300, "👑💎🌌 【天上天下唯我独尊・変態創世神】"),
+        ]
+        for req_lvl, t_name in level_titles:
+            if lvl >= req_lvl and t_name not in unlocked:
+                unlocked.append(t_name)
+
         if present_count >= 10: unlocked.append("💸 上客パパ活おぢさん")
         if present_count >= 50: unlocked.append("💍 まきぐものATM")
 
@@ -488,7 +536,9 @@ class Economy(commands.Cog):
             unlocked.append("👑 まきぐも創造主")
             unlocked.append("⚡ 絶対神")
 
-        options = [discord.SelectOption(label=t, value=t) for t in unlocked]
+        # Discordのセレクトメニュー制限 (最大25件) に配慮して上位25件を表示
+        display_unlocked = unlocked[-25:] if len(unlocked) > 25 else unlocked
+        options = [discord.SelectOption(label=t, value=t) for t in display_unlocked]
         
         class TitleSelect(discord.ui.Select):
             def __init__(self):

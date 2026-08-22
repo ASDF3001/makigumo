@@ -294,15 +294,19 @@ class Events(commands.Cog):
         elif self.bot.user.mentioned_in(message) or "まきぐも" in message.content: filename, triggered = "normal.txt", True
 
         if triggered:
-            try:
-                import sqlite3
-                with sqlite3.connect("database.db", timeout=30.0) as conn:
-                    c = conn.cursor()
-                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
-                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(message.author.id),))
-                    conn.commit()
-            except Exception:
-                pass
+            def _record_chat_stats(author_id_str):
+                try:
+                    import sqlite3
+                    with sqlite3.connect("database.db", timeout=30.0) as conn:
+                        c = conn.cursor()
+                        c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
+                        c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (author_id_str,))
+                        conn.commit()
+                except Exception:
+                    pass
+
+            asyncio.create_task(asyncio.to_thread(_record_chat_stats, str(message.author.id)))
+
             try:
                 line_text = self.bot.get_line(filename).format(user=message.author.mention)
                 try:
@@ -314,19 +318,29 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_app_command_completion(self, interaction: discord.Interaction, command: discord.app_commands.Command):
-        try:
-            import sqlite3
-            user_id = str(interaction.user.id)
-            cmd_name = command.name
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
-                c = conn.cursor()
-                c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
-                c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id,))
-                # 個別コマンドカウント（お仕置き・罵倒等）
-                c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, ?, 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id, f"cmd_{cmd_name}"))
-                conn.commit()
-        except Exception:
-            pass
+        def _record_cmd_stats(user_id_str, cmd_name):
+            try:
+                import sqlite3
+                with sqlite3.connect("database.db", timeout=30.0) as conn:
+                    c = conn.cursor()
+                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id_str,))
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, ?, 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id_str, f"cmd_{cmd_name}"))
+                    conn.commit()
+            except Exception:
+                pass
+
+        asyncio.create_task(asyncio.to_thread(_record_cmd_stats, str(interaction.user.id), command.name))
+
+    @commands.Cog.listener()
+    async def on_app_command_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+        # タイムアウト失効 (10062 Unknown interaction) 等のネットワーク・Gateway遅延エラーを安全に無視
+        if isinstance(error, discord.app_commands.CommandInvokeError):
+            original = error.original
+            if isinstance(original, discord.errors.NotFound) and original.code == 10062:
+                return
+            if isinstance(original, discord.errors.HTTPException) and original.status == 400:
+                return
 
 async def setup(bot):
     await bot.add_cog(Events(bot))

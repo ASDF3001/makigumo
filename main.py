@@ -109,14 +109,19 @@ class MakigumoBot(commands.AutoShardedBot):
             conn.commit()
 
     def _save_economy_sync_task(self):
-        with sqlite3.connect("database.db", timeout=30.0) as conn:
-            c = conn.cursor()
-            for uid, data in self.economy.items():
-                c.execute("INSERT OR REPLACE INTO economy (user_id, data) VALUES (?, ?)", (uid, json.dumps(data, ensure_ascii=False)))
-            if hasattr(self, 'levels'):
-                for uid, data in self.levels.items():
-                    c.execute("INSERT OR REPLACE INTO levels (user_id, xp, level) VALUES (?, ?, ?)", (uid, data["xp"], data["level"]))
-            conn.commit()
+        try:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
+                c = conn.cursor()
+                eco_items = [(uid, json.dumps(data, ensure_ascii=False)) for uid, data in list(self.economy.items())]
+                if eco_items:
+                    c.executemany("INSERT OR REPLACE INTO economy (user_id, data) VALUES (?, ?)", eco_items)
+                if hasattr(self, 'levels'):
+                    lvl_items = [(uid, data["xp"], data["level"]) for uid, data in list(self.levels.items())]
+                    if lvl_items:
+                        c.executemany("INSERT OR REPLACE INTO levels (user_id, xp, level) VALUES (?, ?, ?)", lvl_items)
+                conn.commit()
+        except Exception as e:
+            print(f"⚠️ 経済データ保存エラー: {e}")
 
     def mark_economy_dirty(self):
         self.is_economy_dirty = True
