@@ -24,7 +24,7 @@ class PaymentModal(discord.ui.Modal, title="✨ まきぐも Proプラン 支払
         now_str = datetime.now(timezone(timedelta(hours=9))).isoformat()
 
         req_id = None
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             c.execute(
                 "INSERT INTO gift_requests (user_id, pay_content, status, created_at) VALUES (?, ?, 'pending', ?)",
@@ -60,8 +60,14 @@ class PaymentModal(discord.ui.Modal, title="✨ まきぐも Proプラン 支払
             except Exception:
                 pass
         if not target:
-            app_info = await self.bot.application_info()
-            target = app_info.owner
+            try:
+                app_info = await self.bot.application_info()
+                if hasattr(app_info.owner, 'owner') and app_info.owner.owner:
+                    target = app_info.owner.owner
+                else:
+                    target = app_info.owner
+            except Exception:
+                pass
 
         if target:
             try:
@@ -87,7 +93,7 @@ class UserCancelRequestView(discord.ui.View):
 
     @discord.ui.button(label="❌ 申請を取り消す", style=discord.ButtonStyle.danger)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             c.execute("UPDATE gift_requests SET status = 'cancelled' WHERE request_id = ? AND status = 'pending'", (self.req_id,))
             conn.commit()
@@ -130,7 +136,7 @@ class AdminApprovalView(discord.ui.View):
 
     @discord.ui.button(label="❌ 拒否", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
     async def reject_request(self, interaction: discord.Interaction, button: discord.ui.Button):
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             c.execute("UPDATE gift_requests SET status = 'rejected' WHERE request_id = ?", (self.req_id,))
             conn.commit()
@@ -149,7 +155,7 @@ class AdminApprovalView(discord.ui.View):
 
     async def _grant_pro(self, interaction: discord.Interaction, plan_type: str, days: int):
         now = datetime.now(timezone(timedelta(hours=9)))
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             row = c.execute("SELECT plan_type, expires_at FROM user_subscriptions WHERE user_id = ?", (self.target_user_id,)).fetchone()
             
@@ -280,7 +286,7 @@ class Billing(commands.Cog):
         now_str = datetime.now(timezone(timedelta(hours=9))).isoformat()
 
         req_id = None
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             c.execute(
                 "INSERT INTO gift_requests (user_id, pay_content, status, created_at) VALUES (?, ?, 'pending', ?)",
@@ -329,7 +335,7 @@ class Billing(commands.Cog):
         except Exception:
             pass
 
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             row = c.execute("SELECT plan_type, expires_at, daily_ai_count, last_reset_date FROM user_subscriptions WHERE user_id = ?", (user_id,)).fetchone()
             if row:
@@ -398,7 +404,7 @@ class Billing(commands.Cog):
         else:
             expires_at = (now + timedelta(days=days)).isoformat()
 
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             c.execute(
                 "INSERT INTO user_subscriptions (user_id, plan_type, expires_at, reminded_3days) VALUES (?, ?, ?, 0) "
@@ -420,7 +426,7 @@ class Billing(commands.Cog):
         now = datetime.now(timezone(timedelta(hours=9)))
 
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 rows = c.execute("SELECT user_id, plan_type, expires_at, reminded_3days FROM user_subscriptions WHERE plan_type = 'pro_monthly'").fetchall()
                 

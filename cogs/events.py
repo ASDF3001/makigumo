@@ -127,7 +127,7 @@ class Events(commands.Cog):
             chat_count, cmd_count = 0, 0
             import sqlite3
             try:
-                with sqlite3.connect("database.db") as conn:
+                with sqlite3.connect("database.db", timeout=30.0) as conn:
                     c = conn.cursor()
                     r1 = c.execute("SELECT val FROM bot_stats WHERE key = 'chat_count'").fetchone()
                     if r1: chat_count = r1[0]
@@ -207,7 +207,7 @@ class Events(commands.Cog):
         m, d, y = now.month, now.day, now.year
         import sqlite3
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 rows = c.execute("SELECT user_id, month, day, last_notified FROM birthdays").fetchall()
                 for uid, b_month, b_day, last_not in rows:
@@ -320,7 +320,7 @@ class Events(commands.Cog):
         if triggered:
             try:
                 import sqlite3
-                with sqlite3.connect("database.db") as conn:
+                with sqlite3.connect("database.db", timeout=30.0) as conn:
                     c = conn.cursor()
                     c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
                     c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(message.author.id),))
@@ -338,7 +338,7 @@ class Events(commands.Cog):
             import sqlite3
             user_id = str(interaction.user.id)
             cmd_name = command.name
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
                 c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id,))

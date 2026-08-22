@@ -52,7 +52,7 @@ class AI(commands.Cog):
         import sqlite3
         daily_count = 0
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 row = c.execute("SELECT daily_ai_count, last_reset_date FROM user_subscriptions WHERE user_id = ?", (str(user_id),)).fetchone()
                 if row:
@@ -90,7 +90,7 @@ class AI(commands.Cog):
         system_instruction = self.system_instruction
         import sqlite3
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 row_prompt = c.execute("SELECT prompt FROM user_prompts WHERE user_id = ?", (str(user_id),)).fetchone()
                 if row_prompt and row_prompt[0]:
@@ -197,7 +197,7 @@ class AI(commands.Cog):
             
             # SQLiteへAI対話カウントを加算 & 本日の利用回数加算
             try:
-                with sqlite3.connect("database.db") as conn:
+                with sqlite3.connect("database.db", timeout=30.0) as conn:
                     c = conn.cursor()
                     c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
                     c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'ai_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(user_id),))
@@ -267,7 +267,7 @@ class AI(commands.Cog):
         diary_count = 0
         import sqlite3
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("CREATE TABLE IF NOT EXISTS diary_logs (user_id TEXT, date TEXT, count INTEGER, PRIMARY KEY (user_id, date))")
                 row = c.execute("SELECT count FROM diary_logs WHERE user_id = ? AND date = ?", (user_id, now_date)).fetchone()
@@ -289,7 +289,7 @@ class AI(commands.Cog):
         cmd_count = 0
         
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
                     sk, v = row[0], row[1]
@@ -323,7 +323,7 @@ class AI(commands.Cog):
             reply = "「……日記？ まだ書いてませんよ。また後で見に来なさい。」"
 
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute(
                     "INSERT INTO diary_logs (user_id, date, count) VALUES (?, ?, 1) "
@@ -355,7 +355,7 @@ class AI(commands.Cog):
 
         import sqlite3
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 if 内容:
                     c.execute("INSERT OR REPLACE INTO user_memos (user_id, memo) VALUES (?, ?)", (user_id, 内容))
@@ -397,7 +397,7 @@ class AI(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 if selected_prompt:
                     c.execute("INSERT OR REPLACE INTO user_prompts (user_id, prompt) VALUES (?, ?)", (user_id, selected_prompt))
@@ -427,7 +427,7 @@ class AI(commands.Cog):
 
         import sqlite3
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 if プロンプト:
                     c.execute("INSERT OR REPLACE INTO user_prompts (user_id, prompt) VALUES (?, ?)", (user_id, プロンプト))

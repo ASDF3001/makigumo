@@ -33,8 +33,9 @@ class MakigumoBot(commands.AutoShardedBot):
         self.load_all_lines_to_memory()
 
     def load_settings(self):
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
+            c.execute("PRAGMA journal_mode=WAL")
             c.execute("CREATE TABLE IF NOT EXISTS economy (user_id TEXT PRIMARY KEY, data TEXT)")
             c.execute("CREATE TABLE IF NOT EXISTS channel_settings (guild_id TEXT PRIMARY KEY, channels TEXT)")
             
@@ -101,14 +102,14 @@ class MakigumoBot(commands.AutoShardedBot):
                 self.shop_items = {}
 
     def save_settings(self):
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             for gid, channels in self.channel_settings.items():
                 c.execute("INSERT OR REPLACE INTO channel_settings (guild_id, channels) VALUES (?, ?)", (gid, json.dumps(channels, ensure_ascii=False)))
             conn.commit()
 
     def _save_economy_sync_task(self):
-        with sqlite3.connect("database.db") as conn:
+        with sqlite3.connect("database.db", timeout=30.0) as conn:
             c = conn.cursor()
             for uid, data in self.economy.items():
                 c.execute("INSERT OR REPLACE INTO economy (user_id, data) VALUES (?, ?)", (uid, json.dumps(data, ensure_ascii=False)))
@@ -189,7 +190,7 @@ class MakigumoBot(commands.AutoShardedBot):
             if uid == str(self.application.owner.id):
                 return True
         try:
-            with sqlite3.connect("database.db") as conn:
+            with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 row = c.execute("SELECT plan_type, expires_at FROM user_subscriptions WHERE user_id = ?", (uid,)).fetchone()
                 if not row:
@@ -245,6 +246,9 @@ if __name__ == '__main__':
     if not TOKEN:
         print("tokenない←環境変数か仮のやついれてるか")
     else:
+        admin_id = os.getenv('ADMIN_USER_ID')
+        if not admin_id:
+            print("⚠️ ADMIN_USER_ID が未設定です。.env に設定してください。")
         bot.run(TOKEN)
 
 # あんたへの歪んだ愛の詩×100万行
