@@ -11,7 +11,7 @@ class HelpView(discord.ui.View):
     def get_embed(self, category):
         if category == "home":
             e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバー＆DMに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
-            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（無料50回/Pro200回・記憶2倍）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
+            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（無料100回/Pro300回・記憶2倍）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
             e.add_field(name="💬 チャット自動反応ワード (サーバー内)", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた` / `まきぐそ`", inline=False)
             e.add_field(name="🔗 公式リンク・Proプラン", value="`/pro` : Proプラン案内＆申込（月100円/買い切り500円）\n`/plan` : 現在のプラン＆残り会話数確認\n`/server` : 公式Discordサーバー", inline=False)
             return e
@@ -22,7 +22,7 @@ class HelpView(discord.ui.View):
             return e
         elif category == "game":
             e = discord.Embed(title="🎰 ギャンブル＆レベル・ステータス", color=0xffb6c1)
-            e.add_field(name="レベル＆カルテシステム", value="`/level` : 現在のレベル・XPとランキングを表示\n`/stats` : あなたの変態カルテ（称号・レベル・勝率・AI対話数・所持品）を表示", inline=False)
+            e.add_field(name="レベル＆カルテシステム", value="`/stats` : あなたの変態カルテ（レベル・XP・称号・勝率・AI対話数・所持品）を表示", inline=False)
             e.add_field(name="カジノ・経済コマンド", value="`/daily` / `/gamble` / `/slot` / `/ダイス_罰ゲーム` / `/shop` / `/work` / `/pay` / `/ranking` / `/use`", inline=False)
             return e
         elif category == "admin":
@@ -217,7 +217,6 @@ class Roleplay(commands.Cog):
 
     @app_commands.command(name="omikuji", description="1日1回ひけるまきぐもの変態おみくじ♡（ポインツも貰えます）")
     async def omikuji(self, interaction: discord.Interaction):
-        await interaction.response.defer()
         user_id = str(interaction.user.id)
         from datetime import datetime
         today_str = datetime.now().strftime("%Y-%m-%d")
@@ -234,7 +233,9 @@ class Roleplay(commands.Cog):
             pass
 
         if already_drawn:
-            return await interaction.followup.send("「おみくじは1日1回ですよ？ また明日ひきにきてくださいね♡」")
+            return await interaction.response.send_message("「おみくじは1日1回ですよ？ また明日ひきにきてくださいね♡」", ephemeral=True)
+
+        await interaction.response.defer()
 
         r = random.random()
         if r < 0.05:
@@ -346,7 +347,7 @@ class Roleplay(commands.Cog):
         eco_cmds = "`/slot` `/gamble` `/work` `/pay` `/daily` `/shop` `/use` `/ranking` `/stats` `/titles`"
         ai_cmds = "`/ai` `/reset_ai` `/ai_mode` `/user_settings` `/memo` `/diary`"
         pro_cmds = "`/pro` (Proプラン案内) `/plan` (プラン状況確認) `/pro_pay` (支払い申請)"
-        misc_cmds = "`/omikuji` `/present` `/ガチャ` `/相性` `/ダイス_罰ゲーム` `/birthday` `/suggest` `/command` `/豆知識` `/level`"
+        misc_cmds = "`/omikuji` `/present` `/ガチャ` `/相性` `/ダイス_罰ゲーム` `/birthday` `/suggest` `/command` `/豆知識`"
         
         embed.add_field(name="🎀 ロールプレイ", value=rp_cmds, inline=False)
         embed.add_field(name="💰 経済・ランキング", value=eco_cmds, inline=False)

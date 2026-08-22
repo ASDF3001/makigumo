@@ -199,7 +199,7 @@ class AdminApprovalView(discord.ui.View):
                         f"**プラン**: `{plan_name}`\n"
                         f"**有効期限**: `{expires_at[:10]}`\n\n"
                         f"【Pro特典】\n"
-                        f"・AI会話上限が **1日200回** に拡張\n"
+                        f"・AI会話上限が **1日300回** に拡張\n"
                         f"・会話の記憶量が **2倍（往復50件）** に拡張\n"
                         f"・`/stats` カルテが黄金ゴールド仕様に\n"
                         f"・お誕生日プレゼントが **3000 pt** に\n"
@@ -235,7 +235,7 @@ class Billing(commands.Cog):
                 "・**月額プラン**: `100円` / 30日\n"
                 "・**買い切りプラン**: `500円` / 永続\n\n"
                 "### 👑 Pro限定の豪華特典（全9種）\n"
-                "1. **AI会話制限**: 1日50回 ➔ **1日 200回**（実質無制限）\n"
+                "1. **AI会話制限**: 1日100回 ➔ **1日 300回**（実質無制限）\n"
                 "2. **会話の記憶量**: 往復25件 ➔ 🔥 **2倍！往復50件（計100メッセージ）**\n"
                 "3. **カルテ (`/stats`)**: 黄金ゴールド枠 ＋ `✨ PRO MEMBER ✨` バッジ\n"
                 "4. **お誕生日特典 (`/birthday`)**: 1000 pt ➔ 🎁 **3000 pt ＋ 特別限定メッセージ**\n"
@@ -321,7 +321,7 @@ class Billing(commands.Cog):
         
         plan_type_str = "無料プラン (Free)"
         expires_str = "なし"
-        max_daily = 50
+        max_daily = 100
         daily_used = 0
 
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
@@ -343,7 +343,7 @@ class Billing(commands.Cog):
                 if l_date == now_date:
                     daily_used = used
                 if is_pro:
-                    max_daily = 200
+                    max_daily = 300
                     if p_type == 'pro_lifetime':
                         plan_type_str = "👑 買い切りPro (永続)"
                         expires_str = "無期限"
@@ -353,12 +353,12 @@ class Billing(commands.Cog):
             elif is_admin:
                 plan_type_str = "👑 開発者・永久Pro (永続)"
                 expires_str = "無期限"
-                max_daily = 200
+                max_daily = 300
 
         if is_admin and plan_type_str == "無料プラン (Free)":
             plan_type_str = "👑 開発者・永久Pro (永続)"
             expires_str = "無期限"
-            max_daily = 200
+            max_daily = 300
 
         remain = max(0, max_daily - daily_used)
         embed = discord.Embed(
@@ -380,6 +380,7 @@ class Billing(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="grant_pro", description="【管理者限定】指定したユーザーにProプランを手動で付与します")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(user="付与対象のユーザー", plan_type="プランの種類", days="有効日数 (買い切りは9999)")
     @app_commands.choices(plan_type=[
         app_commands.Choice(name="💎 月額Pro (pro_monthly)", value="pro_monthly"),
@@ -389,11 +390,10 @@ class Billing(commands.Cog):
     async def grant_pro_cmd(self, interaction: discord.Interaction, user: discord.User, plan_type: app_commands.Choice[str], days: int = 30):
         await interaction.response.defer(ephemeral=True)
         admin_id = os.getenv('ADMIN_USER_ID')
-        app_info = await self.bot.application_info()
-        is_admin = (admin_id and str(interaction.user.id) == admin_id) or (interaction.user.id == app_info.owner.id)
-
-        if not is_admin:
-            return await interaction.followup.send("❌ このコマンドはBot管理者のみ実行できます。", ephemeral=True)
+        
+        # ADMIN_USER_ID で指定されたユーザーのみ実行可能
+        if not admin_id or str(interaction.user.id) != str(admin_id):
+            return await interaction.followup.send("❌ このコマンドはBot管理者(ADMIN_USER_ID)のみ実行できます。", ephemeral=True)
 
         target_uid = str(user.id)
         now = datetime.now(timezone(timedelta(hours=9)))

@@ -40,6 +40,70 @@ class ShopView(discord.ui.View):
 
         await interaction.response.send_message(f"「{item['name']}をゲットしました♡ 残り: {user_data['points']} pt」", ephemeral=True)
 
+class UseItemSelect(discord.ui.Select):
+    def __init__(self, bot, user_id):
+        self.bot = bot
+        self.user_id = user_id
+        user_data = self.bot.get_user_data(user_id)
+        inventory = user_data.get("inventory", {})
+
+        options = []
+        consumable_names = {
+            "apology_parfait": ("お詫びの高級パフェ", "渡すと機嫌が直って 1000 pt 獲得！"),
+            "coffee": ("まきぐも特製コーヒー", "まきぐもと一息つくコーヒーを飲む"),
+            "cheat_note": ("カンニングペーパー", "使って 300 pt 獲得！")
+        }
+        
+        for item_id, count in inventory.items():
+            if count > 0:
+                if item_id in consumable_names:
+                    name, desc = consumable_names[item_id]
+                    options.append(discord.SelectOption(label=f"{name} (所持: {count})", description=desc[:100], value=item_id))
+                elif item_id in self.bot.shop_items:
+                    item_info = self.bot.shop_items[item_id]
+                    options.append(discord.SelectOption(label=f"{item_info['name']} (所持: {count})", description="装備アイテム（所持で常時発動）", value=item_id))
+
+        if not options:
+            options.append(discord.SelectOption(label="使えるアイテムがありません", value="none"))
+
+        super().__init__(placeholder="使いたいアイテムを選んでね♡", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        item_id = self.values[0]
+        if item_id == "none":
+            return await interaction.response.send_message("「使えるアイテムを持っていませんよ！」", ephemeral=True)
+
+        user_data = self.bot.get_user_data(interaction.user.id)
+        inventory = user_data.get("inventory", {})
+
+        if inventory.get(item_id, 0) <= 0:
+            return await interaction.response.send_message("「そのアイテムはもう持っていませんよ！」", ephemeral=True)
+
+        if item_id == "apology_parfait":
+            inventory[item_id] -= 1
+            user_data["points"] += 1000
+            self.bot.mark_economy_dirty()
+            await interaction.response.send_message(f"🍨 **お詫びの高級パフェを使用**\n「あむ……んっ、美味しいです♡ まぁ、少しは許してあげなくもないです。（ボーナス 1000 pt もらった！ 現在: {user_data['points']} pt）」", ephemeral=True)
+
+        elif item_id == "coffee":
+            inventory[item_id] -= 1
+            self.bot.mark_economy_dirty()
+            await interaction.response.send_message("☕ **まきぐも特製コーヒーを飲んだ**\n「ほら、熱いから気をつけて飲んでくださいね……？ ふふっ、美味しいですか？♡」", ephemeral=True)
+
+        elif item_id == "cheat_note":
+            inventory[item_id] -= 1
+            user_data["points"] += 300
+            self.bot.mark_economy_dirty()
+            await interaction.response.send_message(f"📝 **カンニングペーパーを使用**\n「ふふっ、そんなの見て勉強してるんですか？……可愛いところありますね♡（300 pt ゲット！ 現在: {user_data['points']} pt）」", ephemeral=True)
+
+        else:
+            await interaction.response.send_message("「そのアイテムは持っているだけで効果がある装備アイテム（幸運の雲など）ですよ！」", ephemeral=True)
+
+class UseView(discord.ui.View):
+    def __init__(self, bot, user_id):
+        super().__init__(timeout=180)
+        self.add_item(UseItemSelect(bot, user_id))
+
 class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -124,7 +188,7 @@ class Economy(commands.Cog):
 
     @app_commands.command(name="shop", description="変態ポインツで色々なアイテムを購入できます♡")
     async def shop(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         if not self.bot.shop_items:
             return await interaction.followup.send("「ショップがまだ空っぽです…」", ephemeral=True)
 
@@ -134,11 +198,11 @@ class Economy(commands.Cog):
             b_txt = f"\n🎲 ギャンブル勝率 +{b*100:.0f}%" if b > 0 else ""
             embed.add_field(name=f"{item['name']}", value=f"{item['description']}{b_txt}\n💰 {item['price']} pt", inline=False)
 
-        await interaction.followup.send(embed=embed, view=ShopView(self.bot))
+        await interaction.followup.send(embed=embed, view=ShopView(self.bot), ephemeral=True)
 
     @app_commands.command(name="work", description="まきぐものお手伝いをしてポインツを稼ぎます（3時間に1回）")
     async def work(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         user_data = self.bot.get_user_data(interaction.user.id)
         now = datetime.now().timestamp()
 
@@ -166,7 +230,7 @@ class Economy(commands.Cog):
 
         action_text = "獲得" if scenario["pt"] > 0 else "没収"
         pt_abs = abs(scenario["pt"])
-        await interaction.followup.send(f"🧹 **アルバイト**\n{scenario['msg']}\n\n(💰 {pt_abs} pt {action_text}！ 現在: {user_data['points']} pt)")
+        await interaction.followup.send(f"🧹 **アルバイト**\n{scenario['msg']}\n\n(💰 {pt_abs} pt {action_text}！ 現在: {user_data['points']} pt)", ephemeral=True)
 
     @app_commands.command(name="pay", description="他の変態さんにポインツを貢ぎます（送金）")
     async def pay(self, interaction: discord.Interaction, 相手: discord.Member, 額: int):
@@ -255,34 +319,18 @@ class Economy(commands.Cog):
         embed.description = desc
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="use", description="所持している消費アイテムを使います")
-    async def use(self, interaction: discord.Interaction, アイテムid: str):
+    @app_commands.command(name="use", description="所持しているアイテムをメニューから選んで使います")
+    async def use(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         user_data = self.bot.get_user_data(interaction.user.id)
         inventory = user_data.get("inventory", {})
 
-        if inventory.get(アイテムid, 0) <= 0:
-            return await interaction.followup.send("「そのアイテムは持っていませんよ！」", ephemeral=True)
+        has_any = any(count > 0 for count in inventory.values())
+        if not has_any:
+            return await interaction.followup.send("「アイテムを何も持っていませんよ！ `/shop` でお買い物してきてくださいね♡」", ephemeral=True)
 
-        if アイテムid == "apology_parfait":
-            inventory[アイテムid] -= 1
-            user_data["points"] += 1000
-            self.bot.mark_economy_dirty()
-            await interaction.followup.send("🍨 **お詫びの高級パフェを使用**\n「あむ……んっ、美味しいです♡ まぁ、少しは許してあげなくもないです。（ボーナス 1000 pt もらった！）」", ephemeral=True)
-
-        elif アイテムid == "coffee":
-            inventory[アイテムid] -= 1
-            self.bot.mark_economy_dirty()
-            await interaction.followup.send("☕ **まきぐも特製コーヒーを飲んだ**\n「ほら、熱いから気をつけて飲んでくださいね……？ ふふっ、美味しいですか？♡」", ephemeral=True)
-
-        elif アイテムid == "cheat_note":
-            inventory[アイテムid] -= 1
-            user_data["points"] += 300
-            self.bot.mark_economy_dirty()
-            await interaction.followup.send("📝 **カンニングペーパーを使用**\n「ふふっ、そんなの見て勉強してるんですか？……可愛いところありますね♡（300 pt ゲット！）」", ephemeral=True)
-
-        else:
-            await interaction.followup.send("「そのアイテムは持っているだけで効果がある装備アイテム（幸運の雲など）ですよ！」", ephemeral=True)
+        embed = discord.Embed(title="🎒 アイテムを使う", description="下のメニューから使いたいアイテムを選んでくださいね♡", color=0xffb6c1)
+        await interaction.followup.send(embed=embed, view=UseView(self.bot, interaction.user.id), ephemeral=True)
 
     @app_commands.command(name="stats", description="あなたの変態カルテ（レベル・ポインツ・勝率・AI対話数・所持アイテム）を確認します")
     async def stats(self, interaction: discord.Interaction, ターゲット: discord.Member = None):

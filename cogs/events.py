@@ -269,30 +269,6 @@ class Events(commands.Cog):
                         pass
             return
 
-        if message.content == "!wakarase":
-            shutdown_id = os.getenv('SHUTDOWN_CHANNEL_ID')
-            if shutdown_id and str(message.channel.id) == shutdown_id:
-                app_info = await self.bot.application_info()
-                is_admin = (admin_id and str(message.author.id) == admin_id) or (message.author.id == app_info.owner.id)
-                if is_admin:
-                    announcement = "【☁️ まきぐもちゃんからのお知らせ】\nただいまよりアップデートのため一時的にBotをシャットダウンします。"
-                    for guild in self.bot.guilds:
-                        target_channel = None
-                        guild_id = str(guild.id)
-                        if guild_id in self.bot.channel_settings and self.bot.channel_settings[guild_id]:
-                            target_channel = self.bot.get_channel(self.bot.channel_settings[guild_id][0])
-                        if not target_channel:
-                            target_channel = guild.system_channel or (guild.text_channels[0] if guild.text_channels else None)
-                        if target_channel:
-                            try:
-                                await target_channel.send(announcement)
-                            except:
-                                pass
-                    if self.bot.is_economy_dirty:
-                        self.bot._save_economy_sync_task()
-                    await self.bot.close()
-                    return
-
         if not message.guild:
             return
 

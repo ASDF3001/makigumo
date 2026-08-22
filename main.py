@@ -220,11 +220,10 @@ class MakigumoBot(commands.AutoShardedBot):
         inventory = user_data.get("inventory", {})
         for item_id, count in inventory.items():
             if item_id in self.shop_items and count > 0:
-                # 修正: count(所持数)の掛け算を無くし、1個持っていれば固定ボーナスを加算するのみに変更
                 bonus += self.shop_items[item_id].get("probability_bonus", 0.0)
         
-        # 修正: 上限を 0.15 (+15%) に制限
-        return min(bonus, 0.15)
+        # 上限を 0.30 (+30%) に設定（基本40% + 最大30% = 勝率最大70%）
+        return min(bonus, 0.30)
 
     async def setup_hook(self):
         # cogsフォルダ内の各ファイルを読み込む

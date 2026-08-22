@@ -47,7 +47,7 @@ class AI(commands.Cog):
         from datetime import datetime, timezone, timedelta
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
         is_pro = self.bot.is_pro(user_id)
-        max_daily = 200 if is_pro else 50
+        max_daily = 300 if is_pro else 100
         
         import sqlite3
         daily_count = 0
@@ -70,9 +70,9 @@ class AI(commands.Cog):
 
         if daily_count >= max_daily:
             if is_pro:
-                return None, "「ご主人様、本日のPro会話上限（200回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！」"
+                return None, "「ご主人様、本日のPro会話上限（300回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！」"
             else:
-                return None, "「本日の無料会話制限（50回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日200回・記憶2倍）をチェックしてみてくださいね♡」"
+                return None, "「本日の無料会話制限（100回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日300回・記憶2倍）をチェックしてみてくださいね♡」"
 
         key = random.choice(self.api_keys)
         if user_id not in self.histories:
@@ -220,7 +220,7 @@ class AI(commands.Cog):
             else:
                 return None, f"「…っ、頭が痛いです…（エラーが発生しました: {last_error}）」"
 
-    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（無料:1日50回/Pro:1日200回）")
+    @app_commands.command(name="ai", description="まきぐもAIと自由にお話しできます♡（無料:1日100回/Pro:1日300回）")
     async def ai_chat(self, interaction: discord.Interaction, メッセージ: str):
         if not HAS_NEW_GENAI and not HAS_LEGACY_GENAI:
             return await interaction.response.send_message("「AI機能を使うには `google-genai` ライブラリが必要です！」", ephemeral=True)
@@ -439,33 +439,6 @@ class AI(commands.Cog):
                     await interaction.followup.send("🔄 カスタムプロンプトをクリアし、デフォルトのまきぐも人格に戻しました！", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ 設定の保存に失敗しました: {e}", ephemeral=True)
-
-    @commands.command(name="models")
-    async def check_models(self, ctx):
-        """利用可能なモデルID一覧を確認する管理者コマンド"""
-        admin_id = os.getenv('ADMIN_USER_ID')
-        app_info = await self.bot.application_info()
-        is_admin = (admin_id and str(ctx.author.id) == admin_id) or (ctx.author.id == app_info.owner.id)
-        
-        if not is_admin:
-            return
-            
-        if not self.api_keys:
-            await ctx.send("APIキーが設定されていません。")
-            return
-            
-        msg = await ctx.send("利用可能なモデルを検索中...")
-        try:
-            client = genai.Client(api_key=self.api_keys[0])
-            available = []
-            for m in client.models.list():
-                if 'flash' in m.name.lower():
-                    available.append(m.name)
-            
-            res = "利用可能なFlash系モデルID一覧:\n" + "\n".join(available[:30])
-            await msg.edit(content=f"```\n{res}\n```")
-        except Exception as e:
-            await msg.edit(content=f"モデルの取得に失敗しました: {e}")
 
 async def setup(bot):
     api_keys = []

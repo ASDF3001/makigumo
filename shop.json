@@ -3,13 +3,13 @@
     "lucky_cloud": {
       "name": "幸運の雲",
       "description": "ギャンブルの勝率がほんのり上がる、ふわふわの雲。持っているだけで効果発動！",
-      "probability_bonus": 0.15,
+      "probability_bonus": 0.10,
       "price": 500
     },
     "lucky_cloud_premium": {
       "name": "黄金の幸運の雲",
       "description": "幸運の雲の上位版。持っているだけでギャンブルがかなり有利に！",
-      "probability_bonus": 0.25,
+      "probability_bonus": 0.20,
       "price": 1500
     },
     "coffee": {
