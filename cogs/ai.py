@@ -84,6 +84,8 @@ class AI(commands.Cog):
 
         base_url = os.getenv("GEMINI_BASE_URL")
         
+        system_instruction = self.system_instruction
+
         # 最新のアップデート情報を読み込んでAIに教える
         try:
             update_dir = "update"
