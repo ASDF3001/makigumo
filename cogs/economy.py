@@ -118,15 +118,27 @@ class Economy(commands.Cog):
             h, m = int(left // 3600), int((left % 3600) // 60)
             return await interaction.followup.send(f"「次は {h}時間{m}分後 ですからね！」", ephemeral=True)
 
+        is_owner = self.bot.is_owner(interaction.user.id)
+        is_promax = self.bot.is_promax(interaction.user.id)
         is_pro = self.bot.is_pro(interaction.user.id)
-        daily_pt = 1000 if is_pro else 500
+
+        if is_owner:
+            daily_pt = 2000
+            msg = f"「開発者様、いつもお疲れ様です♡ 今日の開発費【{daily_pt} pt (Owner特権)】ですよ。現在の所持金は {user_data['points'] + daily_pt} ptです！」"
+        elif is_promax:
+            daily_pt = 2000
+            msg = f"「ご主人様、Pro Maxの応援本当にありがとうございますっ♡ 今日の超豪華配給【{daily_pt} pt (Pro Max特盛ボーナス +1500 pt)】ですよ！現在の所持金は {user_data['points'] + daily_pt} ptです！」"
+        elif is_pro:
+            daily_pt = 1000
+            msg = f"「ご主人様、いつも応援ありがとうございます♡ 今日の配給【{daily_pt} pt (Proボーナス +500 pt)】ですよ。現在の所持金は {user_data['points'] + daily_pt} ptです！」"
+        else:
+            daily_pt = 500
+            msg = f"「ほら、今日の配給【{daily_pt} pt】です。現在の所持金は {user_data['points'] + daily_pt} ptですよ。」"
+
         user_data["points"] += daily_pt
         user_data["last_daily"] = now
         self.bot.mark_economy_dirty()
-        if is_pro:
-            await interaction.followup.send(f"「ご主人様、いつも応援ありがとうございます♡ 今日の配給【{daily_pt} pt (Proボーナス +500 pt)】ですよ。現在の所持金は {user_data['points']} ptです！」")
-        else:
-            await interaction.followup.send(f"「ほら、今日の配給【{daily_pt} pt】です。現在の所持金は {user_data['points']} ptですよ。」")
+        await interaction.followup.send(msg)
 
     @app_commands.command(name="gamble", description="まきぐもと変態ポインツを賭けて勝負します（倍率はランダム）")
     async def gamble(self, interaction: discord.Interaction, 賭け金: int):
@@ -375,16 +387,33 @@ class Economy(commands.Cog):
 
         win_rate = min(90, 40 + int(bonus * 100))
 
+        is_owner = self.bot.is_owner(target_user.id)
+        is_promax = self.bot.is_promax(target_user.id)
         is_pro = self.bot.is_pro(target_user.id)
-        color = 0xFFD700 if is_pro else 0x9370db
-        title_prefix = "✨ PRO " if is_pro else ""
+
+        if is_owner:
+            color = 0xFF4500
+            title_prefix = "👑 OWNER "
+            status_text = "`👑 OWNER (開発者・最高権力者) 👑`"
+        elif is_promax:
+            color = 0xE5E4E2
+            title_prefix = "💎👑 PRO MAX "
+            status_text = "`💎👑 PRO MAX MEMBER (最上級変態貴族) 👑💎`"
+        elif is_pro:
+            color = 0xFFD700
+            title_prefix = "✨ PRO "
+            status_text = "`✨ PRO MEMBER (特別会員) ✨`"
+        else:
+            color = 0x9370db
+            title_prefix = ""
+            status_text = None
 
         embed = discord.Embed(title=f"📋 {title_prefix}変態カルテ & ステータス - {target_user.display_name}", color=color)
         if target_user.display_avatar:
             embed.set_thumbnail(url=target_user.display_avatar.url)
 
-        if is_pro:
-            embed.add_field(name="👑 会員ステータス", value="`✨ PRO MEMBER (特別会員) ✨`", inline=False)
+        if status_text:
+            embed.add_field(name="👑 会員ステータス", value=status_text, inline=False)
 
         embed.add_field(name="🏷️ 変態称号", value=f"**{equipped_title}**", inline=False)
         embed.add_field(name="📊 レベル & XP", value=f"**Lv.{lvl}** (`{xp} XP`)", inline=True)
@@ -413,6 +442,8 @@ class Economy(commands.Cog):
     async def titles(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
+        is_owner = self.bot.is_owner(user_id)
+        is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
         
         lvl_info = getattr(self.bot, 'levels', {}).get(user_id, {"level": 1})
@@ -443,10 +474,19 @@ class Economy(commands.Cog):
         if present_count >= 10: unlocked.append("💸 上客パパ活おぢさん")
         if present_count >= 50: unlocked.append("💍 まきぐものATM")
 
-        # Pro限定称号
-        if is_pro:
+        # Pro / Pro Max / Owner限定称号
+        if is_pro or is_promax or is_owner:
             unlocked.append("👑 まきぐもパトロン")
             unlocked.append("💎 筆頭変態紳士")
+
+        if is_promax or is_owner:
+            unlocked.append("🌌 宇宙の覇王")
+            unlocked.append("💖 まきぐもの愛人")
+            unlocked.append("👑 超絶富豪パトロン")
+
+        if is_owner:
+            unlocked.append("👑 まきぐも創造主")
+            unlocked.append("⚡ 絶対神")
 
         options = [discord.SelectOption(label=t, value=t) for t in unlocked]
         

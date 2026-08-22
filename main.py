@@ -181,7 +181,7 @@ class MakigumoBot(commands.AutoShardedBot):
         self.mark_economy_dirty()
         return user_data["points"]
 
-    def is_pro(self, user_id) -> bool:
+    def is_owner(self, user_id) -> bool:
         uid = str(user_id)
         admin_id = os.getenv('ADMIN_USER_ID')
         if admin_id and uid == str(admin_id):
@@ -189,30 +189,45 @@ class MakigumoBot(commands.AutoShardedBot):
         if hasattr(self, 'application') and self.application and self.application.owner:
             if uid == str(self.application.owner.id):
                 return True
+        return False
+
+    def get_user_plan(self, user_id) -> str:
+        """ユーザーの有効プランを返す: 'owner' | 'promax_lifetime' | 'promax_monthly' | 'pro_lifetime' | 'pro_monthly' | 'free'"""
+        uid = str(user_id)
+        if self.is_owner(uid):
+            return 'owner'
         try:
             with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 row = c.execute("SELECT plan_type, expires_at FROM user_subscriptions WHERE user_id = ?", (uid,)).fetchone()
                 if not row:
-                    return False
+                    return 'free'
                 plan_type, expires_at = row
-                if plan_type == 'pro_lifetime':
-                    return True
-                elif plan_type == 'pro_monthly' and expires_at:
+                if plan_type in ('pro_lifetime', 'promax_lifetime'):
+                    return plan_type
+                elif plan_type in ('pro_monthly', 'promax_monthly') and expires_at:
                     from datetime import datetime, timezone, timedelta
                     now = datetime.now(timezone(timedelta(hours=9)))
                     exp_dt = datetime.fromisoformat(expires_at)
                     if exp_dt.tzinfo is None:
                         exp_dt = exp_dt.replace(tzinfo=timezone(timedelta(hours=9)))
                     if exp_dt > now:
-                        return True
+                        return plan_type
                     else:
                         c.execute("UPDATE user_subscriptions SET plan_type = 'free' WHERE user_id = ?", (uid,))
                         conn.commit()
-                        return False
+                        return 'free'
         except Exception:
             pass
-        return False
+        return 'free'
+
+    def is_promax(self, user_id) -> bool:
+        plan = self.get_user_plan(user_id)
+        return plan in ('owner', 'promax_lifetime', 'promax_monthly')
+
+    def is_pro(self, user_id) -> bool:
+        plan = self.get_user_plan(user_id)
+        return plan in ('owner', 'promax_lifetime', 'promax_monthly', 'pro_lifetime', 'pro_monthly')
 
     def get_probability_bonus(self, user_id):
         user_data = self.get_user_data(user_id)
@@ -222,8 +237,12 @@ class MakigumoBot(commands.AutoShardedBot):
             if item_id in self.shop_items and count > 0:
                 bonus += self.shop_items[item_id].get("probability_bonus", 0.0)
         
-        # 上限を 0.30 (+30%) に設定（基本40% + 最大30% = 勝率最大70%）
-        return min(bonus, 0.30)
+        # Pro Max / Owner 特典: 常時パッシブ幸運補正 +5%
+        if self.is_promax(user_id):
+            bonus += 0.05
+        
+        # 上限を 0.35 (+35%) に設定（基本40% + 最大35% = 勝率最大75%）
+        return min(bonus, 0.35)
 
     async def setup_hook(self):
         # cogsフォルダ内の各ファイルを読み込む

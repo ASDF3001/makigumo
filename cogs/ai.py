@@ -44,8 +44,19 @@ class AI(commands.Cog):
     async def _generate_ai_reply(self, user_id, display_name, msg_content):
         from datetime import datetime, timezone, timedelta
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+        user_plan = self.bot.get_user_plan(user_id)
+        is_owner = self.bot.is_owner(user_id)
+        is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
-        max_daily = 300 if is_pro else 100
+        
+        if is_owner:
+            max_daily = 999999
+        elif is_promax:
+            max_daily = 1000
+        elif is_pro:
+            max_daily = 300
+        else:
+            max_daily = 100
         
         import sqlite3
         daily_count = 0
@@ -66,11 +77,13 @@ class AI(commands.Cog):
         except Exception:
             pass
 
-        if daily_count >= max_daily:
-            if is_pro:
-                return None, "「ご主人様、本日のPro会話上限（300回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！」"
+        if not is_owner and daily_count >= max_daily:
+            if is_promax:
+                return None, "「ご主人様、本日のPro Max会話上限（1,000回）に達しました！\nたくさんお話ししてくれてとっても幸せです♡ また明日いっぱい愛してくださいね！」"
+            elif is_pro:
+                return None, "「ご主人様、本日のPro会話上限（300回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！（`/pro` で1日1000回・記憶200件のPro Maxもご用意してます♡）」"
             else:
-                return None, "「本日の無料会話制限（100回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日300回・記憶2倍）をチェックしてみてくださいね♡」"
+                return None, "「本日の無料会話制限（100回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日300回〜1000回・記憶超大容量）をチェックしてみてくださいね♡」"
 
         key = random.choice(self.api_keys)
         if user_id not in self.histories:
@@ -189,8 +202,14 @@ class AI(commands.Cog):
             history.append({"role": "user", "parts": [user_msg]})
             history.append({"role": "model", "parts": [reply]})
             
-            # Proは往復50件(計100件)、無料は往復25件(計50件)
-            history_limit = 100 if is_pro else 50
+            # Pro Max/Ownerは往復100件(計200件)、Proは往復50件(計100件)、無料は往復25件(計50件)
+            if is_promax or is_owner:
+                history_limit = 200
+            elif is_pro:
+                history_limit = 100
+            else:
+                history_limit = 50
+
             if len(history) > history_limit:
                 self.histories[user_id] = history[-history_limit:]
             
@@ -264,8 +283,18 @@ class AI(commands.Cog):
         
         from datetime import datetime, timezone, timedelta
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+        is_owner = self.bot.is_owner(user_id)
+        is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
-        max_diary = 3 if is_pro else 1
+        
+        if is_owner:
+            max_diary = 999
+        elif is_promax:
+            max_diary = 10
+        elif is_pro:
+            max_diary = 3
+        else:
+            max_diary = 1
         
         diary_count = 0
         import sqlite3
@@ -279,11 +308,13 @@ class AI(commands.Cog):
         except Exception:
             pass
 
-        if diary_count >= max_diary:
+        if not is_owner and diary_count >= max_diary:
             if not is_pro:
-                return await interaction.followup.send("「絵日記は1日1回までですよ！また明日読んであげますね♡\n※Proプランなら1日3回まで観察絵日記が読めますよ (`/pro`)」", ephemeral=True)
+                return await interaction.followup.send("「絵日記は1日1回までですよ！また明日読んであげますね♡\n※Proプランなら1日3回、Pro Maxなら1日10回まで読めますよ (`/pro`)」", ephemeral=True)
+            elif is_promax:
+                return await interaction.followup.send("「本日のPro Max観察絵日記の上限（1日10回）に達しました！また明日たくさん書いてあげますね♡」", ephemeral=True)
             else:
-                return await interaction.followup.send("「本日の観察絵日記の上限（1日3回）に達しました！また明日たくさん書いてあげますね♡」", ephemeral=True)
+                return await interaction.followup.send("「本日の観察絵日記の上限（1日3回）に達しました！また明日たくさん書いてあげますね♡\n※Pro Maxプランなら1日10回まで読めますよ (`/pro`)」", ephemeral=True)
 
         # Get user context
         u_data = self.bot.get_user_data(user_id)
@@ -345,16 +376,28 @@ class AI(commands.Cog):
     @app_commands.describe(内容="AIに覚えておいてほしいこと（空欄でメモを削除します）")
     async def memo(self, interaction: discord.Interaction, 内容: str = None):
         user_id = str(interaction.user.id)
+        is_owner = self.bot.is_owner(user_id)
+        is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
-        max_len = 300 if is_pro else 100
+        
+        if is_owner:
+            max_len = 1000
+        elif is_promax:
+            max_len = 600
+        elif is_pro:
+            max_len = 300
+        else:
+            max_len = 100
         
         await interaction.response.defer(ephemeral=True)
 
         if 内容 and len(内容) > max_len:
             if not is_pro:
-                return await interaction.followup.send(f"❌ メモは100文字以内で入力してください！（現在: {len(内容)}文字）\n※Proプランに加入すると最大300文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+                return await interaction.followup.send(f"❌ メモは100文字以内で入力してください！（現在: {len(内容)}文字）\n※Proプランなら最大300文字、Pro Maxなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+            elif is_promax:
+                return await interaction.followup.send(f"❌ メモは600文字以内で入力してください！（現在: {len(内容)}文字）", ephemeral=True)
             else:
-                return await interaction.followup.send(f"❌ メモは300文字以内で入力してください！（現在: {len(内容)}文字）", ephemeral=True)
+                return await interaction.followup.send(f"❌ メモは300文字以内で入力してください！（現在: {len(内容)}文字）\n※Pro Maxプランなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
 
         import sqlite3
         try:
@@ -417,16 +460,28 @@ class AI(commands.Cog):
     @app_commands.describe(プロンプト="まきぐもAIへの指示文（ZETAのキャラクタープロンプト）。空欄でクリア（リセット）します")
     async def user_settings(self, interaction: discord.Interaction, プロンプト: str = None):
         user_id = str(interaction.user.id)
+        is_owner = self.bot.is_owner(user_id)
+        is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
-        max_len = 300 if is_pro else 100
+        
+        if is_owner:
+            max_len = 1000
+        elif is_promax:
+            max_len = 600
+        elif is_pro:
+            max_len = 300
+        else:
+            max_len = 100
 
         await interaction.response.defer(ephemeral=True)
 
         if プロンプト and len(プロンプト) > max_len:
             if not is_pro:
-                return await interaction.followup.send(f"❌ カスタムプロンプトは100文字以内で入力してください！（現在: {len(プロンプト)}文字）\n※Proプランに加入すると最大300文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+                return await interaction.followup.send(f"❌ カスタムプロンプトは100文字以内で入力してください！（現在: {len(プロンプト)}文字）\n※Proプランなら最大300文字、Pro Maxなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
+            elif is_promax:
+                return await interaction.followup.send(f"❌ カスタムプロンプトは600文字以内で入力してください！（現在: {len(プロンプト)}文字）", ephemeral=True)
             else:
-                return await interaction.followup.send(f"❌ カスタムプロンプトは300文字以内で入力してください！（現在: {len(プロンプト)}文字）", ephemeral=True)
+                return await interaction.followup.send(f"❌ カスタムプロンプトは300文字以内で入力してください！（現在: {len(プロンプト)}文字）\n※Pro Maxプランなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
 
         import sqlite3
         try:

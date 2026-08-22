@@ -11,9 +11,9 @@ class HelpView(discord.ui.View):
     def get_embed(self, category):
         if category == "home":
             e = discord.Embed(title="☁️ まきぐもちゃん 総合ヘルプガイド", description="サーバー＆DMに常駐して、あなたたち「変態さん」を監視・癒やし・お仕置きするBotです♡", color=0xffb6c1)
-            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（無料100回/Pro300回・記憶2倍）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
+            e.add_field(name="🤖 まきぐもAI (ZETA機能)", value="`/ai [メッセージ]` : まきぐもAIとチャット（無料100回 / Pro300回 / Pro Max 1000回・記憶最大200件）\n`/user_settings [プロンプト]` : AIの性格・プロンプトを自分専用にカスタム\n📩 **DM送信** : Bot宛てに直接DMを送るだけでタイマンAIチャット可能！", inline=False)
             e.add_field(name="💬 チャット自動反応ワード (サーバー内)", value="`まきぐも` / `おはよ` / `おやすみ` / `かわいい` / `抜いた` / `まきぐそ`", inline=False)
-            e.add_field(name="🔗 公式リンク・Proプラン", value="`/pro` : Proプラン案内＆申込（月100円/買い切り500円）\n`/plan` : 現在のプラン＆残り会話数確認\n`/server` : 公式Discordサーバー", inline=False)
+            e.add_field(name="🔗 公式リンク・有料プラン", value="`/pro` : Pro / Pro Maxプラン案内＆申込（Pro:月100円/買切500円, Pro Max:月250円/買切1500円）\n`/plan` : 現在のプラン＆残り会話数確認\n`/server` : 公式Discordサーバー", inline=False)
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)

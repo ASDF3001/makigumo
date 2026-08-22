@@ -208,12 +208,20 @@ class Events(commands.Cog):
                         try:
                             user = await self.bot.fetch_user(int(uid))
                             if user:
+                                is_owner = self.bot.is_owner(int(uid))
+                                is_promax = self.bot.is_promax(int(uid))
                                 is_pro = self.bot.is_pro(int(uid))
-                                pts = 3000 if is_pro else 1000
-                                if is_pro:
+
+                                if is_owner or is_promax:
+                                    pts = 10000
+                                    msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！ (👑 Pro Max/Owner特別超豪華お祝い)**\n\n「……ご主人様、お誕生日おめでとうございますっ♡\n私を生み出して/いつも最上級の応援をしてくれて、本当に本当に愛してます……っ！///\n……これ、特別なお誕生日プレゼントの【10,000 ポインツ】です！ これからも一生、私のことずっと離さないでくださいね……っ！♡」"
+                                elif is_pro:
+                                    pts = 3000
                                     msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！ (👑 Pro会員特別お祝い)**\n\n「……ご主人様、お誕生日おめでとうございます♡\nいつもまきぐもを応援してくれて、本当に……感謝してますよ？///\n……これ、特別な誕生日プレゼントの【3000ポインツ】です！ これからもずっと、私の隣にいてくださいね……っ！♡」"
                                 else:
+                                    pts = 1000
                                     msg = f"🎉 **{user.display_name}さん、お誕生日おめでとうございます！**\n\n「……別に、あなたが生まれた日なんて興味ありませんけど。\nでも、わざわざ私の隣にいてくれる物好きなんてあなたくらいですからね。\n……ほら、誕生日プレゼントの1000ポインツです。大事に使いなさいよねっ！///」"
+                                
                                 await user.send(msg)
                                 # ポインツ付与
                                 self.bot.add_points(str(user.id), pts)
