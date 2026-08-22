@@ -100,6 +100,16 @@ class AI(commands.Cog):
         
         system_instruction = self.system_instruction
 
+        # まきぐもの全機能一覧を読み込んでAIに教える
+        try:
+            features_file = "FEATURES.md"
+            if os.path.exists(features_file):
+                with open(features_file, "r", encoding="utf-8") as f:
+                    features_info = f.read()
+                system_instruction = f"{system_instruction}\n\n【まきぐもの全機能一覧（ユーザーに使い方を聞かれたときや機能を自慢するときに使ってね）】\n{features_info}"
+        except Exception:
+            pass
+
         # 最新のアップデート情報を読み込んでAIに教える
         try:
             update_dir = "update"
