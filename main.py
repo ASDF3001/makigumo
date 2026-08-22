@@ -21,7 +21,7 @@ LINES_DIR = "lines"
 
 class MakigumoBot(commands.AutoShardedBot):
     def __init__(self):
-        super().__init__(command_prefix="!", intents=intents)
+        super().__init__(command_prefix="!", intents=intents, chunk_guilds_at_startup=False)
         self.channel_settings = {}
         self.economy = {}
         self.shop_items = {}

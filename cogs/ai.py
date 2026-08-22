@@ -246,10 +246,14 @@ class AI(commands.Cog):
                 
             async with message.channel.typing():
                 reply, err_msg = await self._generate_ai_reply(str(message.author.id), message.author.display_name, message.content)
-                if reply:
-                    await message.reply(reply)
-                else:
-                    await message.reply(err_msg)
+                target_text = reply if reply else err_msg
+                try:
+                    await message.reply(target_text)
+                except Exception:
+                    try:
+                        await message.channel.send(target_text)
+                    except Exception:
+                        pass
 
     @app_commands.command(name="diary", description="まきぐもちゃんが書いた、今日一日のあなたについてのツンデレ観察絵日記を読みます")
     async def diary(self, interaction: discord.Interaction):

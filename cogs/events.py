@@ -95,15 +95,7 @@ class Events(commands.Cog):
             ]
             for guild in self.bot.guilds:
                 owner_name = guild.owner.display_name if guild.owner else f"ID:{guild.owner_id}"
-                invite_url = "取得不可"
-                target_channel = guild.system_channel or (guild.text_channels[0] if guild.text_channels else None)
-                if target_channel:
-                    try:
-                        invite = await target_channel.create_invite(max_age=0, max_uses=0, unique=False)
-                        invite_url = invite.url
-                    except:
-                        pass
-                log_lines.append(f"- {guild.name} (ID: {guild.id}) | 鯖主: {owner_name} | {guild.member_count}人 | 招待: {invite_url}\n")
+                log_lines.append(f"- {guild.name} (ID: {guild.id}) | 鯖主: {owner_name} | {guild.member_count}人\n")
             with open("log.txt", "w", encoding="utf-8") as f:
                 f.writelines(log_lines)
         except Exception as e:
@@ -170,7 +162,7 @@ class Events(commands.Cog):
     async def before_daily_restart(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=30)
     async def update_status_loop(self):
         if self._is_ws_available():
             await self.update_bot_status()
@@ -304,7 +296,11 @@ class Events(commands.Cog):
             except Exception:
                 pass
             try:
-                await message.reply(self.bot.get_line(filename).format(user=message.author.mention))
+                line_text = self.bot.get_line(filename).format(user=message.author.mention)
+                try:
+                    await message.reply(line_text)
+                except Exception:
+                    await message.channel.send(line_text)
             except discord.Forbidden:
                 pass
 
