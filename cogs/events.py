@@ -162,7 +162,7 @@ class Events(commands.Cog):
     async def before_daily_restart(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=15)
     async def update_status_loop(self):
         if self._is_ws_available():
             await self.update_bot_status()
