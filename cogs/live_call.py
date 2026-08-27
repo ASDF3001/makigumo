@@ -49,8 +49,13 @@ class LiveCall(commands.Cog):
         self.api_keys = api_keys
         self.active_calls = {} # guild_id -> { 'session': ..., 'vc': ..., 'tasks': [...] }
 
-    @app_commands.command(name="call", description="【Pro MAX限定】まきぐもとDM通話風にボイスチャンネルでお話しします！(聞き専)")
-    async def call_cmd(self, interaction: discord.Interaction):
+    @app_commands.command(name="call", description="【Pro MAX限定】まきぐもとボイスチャンネルでお話しします！(聞き専)")
+    @app_commands.describe(返信先="まきぐもの返信テキストを送る場所（未指定ならDM）")
+    @app_commands.choices(返信先=[
+        app_commands.Choice(name="DM (デフォルト)", value="dm"),
+        app_commands.Choice(name="現在のテキストチャンネル", value="channel")
+    ])
+    async def call_cmd(self, interaction: discord.Interaction, 返信先: str = "dm"):
         await interaction.response.defer(ephemeral=True)
         
         if not HAS_VOICE_RECV or not HAS_NEW_GENAI:
@@ -75,7 +80,10 @@ class LiveCall(commands.Cog):
             return
             
         try:
-            vc = await channel.connect(cls=VoiceRecvClient)
+            vc = await channel.connect(cls=VoiceRecvClient, timeout=60.0)
+        except asyncio.TimeoutError:
+            await interaction.followup.send("「接続がタイムアウトしました……！(ホストサーバーのUDP通信がブロックされている可能性があります！)」")
+            return
         except Exception as e:
             await interaction.followup.send(f"「接続に失敗しました……」 ({e})")
             return
@@ -90,16 +98,19 @@ class LiveCall(commands.Cog):
         sink = GeminiLiveSink(user_id, loop, audio_queue)
         vc.listen(sink)
         
+        target_channel = interaction.channel if 返信先 == "channel" else interaction.user
+        
         # Start the background task for this call
-        call_task = asyncio.create_task(self._live_call_loop(guild.id, vc, client, interaction.user, audio_queue))
+        call_task = asyncio.create_task(self._live_call_loop(guild.id, vc, client, interaction.user, target_channel, audio_queue))
         self.active_calls[guild.id] = {
             'vc': vc,
             'task': call_task
         }
         
-        await interaction.followup.send("「繋がりましたよ！ボイスチャンネルで私に話しかけてみてくださいね。(返信はDMで送ります)」")
+        msg = "「繋がりましたよ！ボイスチャンネルで私に話しかけてみてくださいね。(返信はDMで送ります)」" if 返信先 == "dm" else "「繋がりましたよ！話しかけたら、このチャンネルで返信しますね！」"
+        await interaction.followup.send(msg)
 
-    async def _live_call_loop(self, guild_id, vc, client, user, audio_queue):
+    async def _live_call_loop(self, guild_id, vc, client, user, target_channel, audio_queue):
         config = {"response_modalities": ["TEXT"]}
         # まきぐもの設定をシステムプロンプトに
         cog_ai = self.bot.get_cog("AI")
@@ -143,7 +154,7 @@ class LiveCall(commands.Cog):
                             
                             if getattr(response.server_content, "turn_complete", False) and current_reply.strip():
                                 try:
-                                    await user.send(current_reply.strip())
+                                    await target_channel.send(f"{user.mention} {current_reply.strip()}" if isinstance(target_channel, discord.TextChannel) else current_reply.strip())
                                 except:
                                     pass
                                 current_reply = ""
@@ -161,7 +172,7 @@ class LiveCall(commands.Cog):
         except Exception as e:
             print(f"Live API error: {e}")
             try:
-                await user.send("「ごめんなさい、通話が途切れちゃいました……」")
+                await target_channel.send("「ごめんなさい、通話が途切れちゃいました……」")
             except:
                 pass
         finally:
