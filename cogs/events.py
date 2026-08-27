@@ -350,9 +350,10 @@ class Events(commands.Cog):
                     import pg_shim as sqlite3
                     with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                         c = conn.cursor()
-                        c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
-                        c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (author_id_str,))
-                        conn.commit()
+                        if message.author.id != self.bot.user.id:
+                            c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = bot_stats.val + 1")
+                            c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'chat_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = user_stats.val + 1", (author_id_str,))
+                            conn.commit()
                 except Exception:
                     pass
 
@@ -374,9 +375,9 @@ class Events(commands.Cog):
                 import pg_shim as sqlite3
                 with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
-                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
-                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id_str,))
-                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, ?, 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id_str, f"cmd_{cmd_name}"))
+                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = bot_stats.val + 1")
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'cmd_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = user_stats.val + 1", (user_id_str,))
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, ?, 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = user_stats.val + 1", (user_id_str, f"cmd_{cmd_name}"))
                     conn.commit()
             except Exception:
                 pass

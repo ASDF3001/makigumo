@@ -300,11 +300,11 @@ class AI(commands.Cog):
             try:
                 with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
-                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
-                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'ai_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (str(user_id),))
+                    c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = bot_stats.val + 1")
+                    c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'ai_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = user_stats.val + 1", (str(user_id),))
                     c.execute(
                         "INSERT INTO user_subscriptions (user_id, daily_ai_count, last_reset_date) VALUES (?, 1, ?) "
-                        "ON CONFLICT(user_id) DO UPDATE SET daily_ai_count = CASE WHEN last_reset_date = ? THEN daily_ai_count + 1 ELSE 1 END, last_reset_date = ?",
+                        "ON CONFLICT(user_id) DO UPDATE SET daily_ai_count = CASE WHEN user_subscriptions.last_reset_date = ? THEN user_subscriptions.daily_ai_count + 1 ELSE 1 END, last_reset_date = ?",
                         (str(user_id), now_date, now_date, now_date)
                     )
                     conn.commit()
@@ -444,7 +444,7 @@ class AI(commands.Cog):
                 c = conn.cursor()
                 c.execute(
                     "INSERT INTO diary_logs (user_id, date, count) VALUES (?, ?, 1) "
-                    "ON CONFLICT(user_id, date) DO UPDATE SET count = count + 1",
+                    "ON CONFLICT(user_id, date) DO UPDATE SET count = diary_logs.count + 1",
                     (user_id, now_date)
                 )
                 conn.commit()
