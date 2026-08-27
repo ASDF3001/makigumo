@@ -69,5 +69,30 @@ class Report(commands.Cog):
         file = discord.File("database.db", filename="database.db")
         await interaction.followup.send("📦 データベースのバックアップファイルです！", file=file)
 
+
+    @app_commands.command(name="rescue_files", description="【開発者専用】database.dbと.envをDMに送信して救出します")
+    async def rescue_files_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        if not self.bot.is_owner(str(interaction.user.id)):
+            await interaction.followup.send("このコマンドは開発者専用です。")
+            return
+            
+        import os
+        files_to_send = []
+        if os.path.exists("database.db"):
+            files_to_send.append(discord.File("database.db", filename="database.db"))
+        if os.path.exists(".env"):
+            files_to_send.append(discord.File(".env", filename=".env"))
+            
+        if not files_to_send:
+            await interaction.followup.send("ファイルが見つかりません。")
+            return
+            
+        try:
+            await interaction.user.send("📦 救出ファイルのお届けです！取扱注意！", files=files_to_send)
+            await interaction.followup.send("✅ DMにファイルを送信しました！")
+        except Exception as e:
+            await interaction.followup.send(f"⚠️ DMの送信に失敗しました（DM設定が閉じているかも？）：{e}")
+
 async def setup(bot):
     await bot.add_cog(Report(bot))
