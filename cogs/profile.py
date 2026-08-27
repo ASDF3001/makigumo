@@ -71,6 +71,52 @@ class ProfileModal(discord.ui.Modal, title="まきぐも プロフィール設�
                                 address = res.get("name")
             except Exception as e:
                 print(f"Geocoding error: {e}")
+                
+            # Open-Meteoで検索失敗した場合、Gemini APIで校正・座標取得を試みる
+            if (lat is None or lon is None) and self.bot:
+                ai_cog = self.bot.get_cog("AI")
+                if ai_cog and hasattr(ai_cog, "api_keys") and ai_cog.api_keys:
+                    import random
+                    import json
+                    import re
+                    api_key = random.choice(ai_cog.api_keys)
+                    prompt = f"地名 '{loc_str}' の緯度(lat)、経度(lon)、都道府県(pref)、市区町村(address)をJSON形式で出力してください。\n出力例: {{\"lat\": 35.6895, \"lon\": 139.6917, \"pref\": \"東京都\", \"address\": \"新宿区\"}}\nマークダウンは使わず純粋なJSON文字列のみを出力してください。"
+                    text = ""
+                    try:
+                        from google import genai
+                        client = genai.Client(api_key=api_key)
+                        # ai_cogのキャッシュがあればそれを使う、なければ適当なflashモデル
+                        model_name = getattr(ai_cog, "available_models_cache", ["gemini-2.5-flash"])[0]
+                        resp = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt
+                        )
+                        text = resp.text
+                    except ImportError:
+                        try:
+                            import google.generativeai as legacy_genai
+                            legacy_genai.configure(api_key=api_key)
+                            model_name = getattr(ai_cog, "available_models_cache", ["gemini-1.5-flash"])[0]
+                            model = legacy_genai.GenerativeModel(model_name)
+                            resp = model.generate_content(prompt)
+                            text = resp.text
+                        except Exception as e:
+                            print(f"Legacy Gemini geocoding error: {e}")
+                    except Exception as e:
+                        print(f"Gemini geocoding error: {e}")
+                        
+                    if text:
+                        m = re.search(r'\{.*\}', text, re.DOTALL)
+                        if m:
+                            try:
+                                js = json.loads(m.group(0))
+                                lat = float(js.get("lat", 0)) if js.get("lat") else None
+                                lon = float(js.get("lon", 0)) if js.get("lon") else None
+                                pref = str(js.get("pref", ""))
+                                address = str(js.get("address", ""))
+                            except Exception as e:
+                                print(f"Gemini geocoding json parse error: {e}")
+
 
         # Save to DB
         try:
