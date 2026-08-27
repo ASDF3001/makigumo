@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands, tasks
 import json
 import os
+import shutil
+import glob
 import sys
 import asyncio
 from datetime import datetime, time, timezone, timedelta
@@ -20,6 +22,8 @@ class Events(commands.Cog):
             self.check_birthdays.start()
         if not self.periodic_server_count_saver.is_running():
             self.periodic_server_count_saver.start()
+        if not self.db_backup_task.is_running():
+            self.db_backup_task.start()
 
     def cog_unload(self):
         self.update_status_loop.cancel()
@@ -27,6 +31,7 @@ class Events(commands.Cog):
         self.background_economy_saver.cancel()
         self.check_birthdays.cancel()
         self.periodic_server_count_saver.cancel()
+        self.db_backup_task.cancel()
 
     def _is_ws_available(self) -> bool:
         try:
@@ -188,6 +193,44 @@ class Events(commands.Cog):
 
     @periodic_server_count_saver.before_loop
     async def before_periodic_server_count_saver(self):
+        await self.bot.wait_until_ready()
+
+
+    @tasks.loop(hours=12)
+    async def db_backup_task(self):
+        if not self.bot.is_ready():
+            return
+        
+        try:
+            os.makedirs("backup", exist_ok=True)
+            now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = f"backup/database_{now_str}.db"
+            
+            # Flush WAL and checkpoint if needed, but simple copy is usually fine for sqlite if not mid-transaction, 
+            # or better: use sqlite3 backup API.
+            import sqlite3
+            import asyncio
+            
+            def backup_db():
+                with sqlite3.connect("database.db", timeout=30.0) as src, sqlite3.connect(backup_path) as dst:
+                    src.backup(dst)
+                
+                # Keep only last 5 backups
+                backups = sorted(glob.glob("backup/database_*.db"))
+                while len(backups) > 5:
+                    oldest = backups.pop(0)
+                    try:
+                        os.remove(oldest)
+                    except:
+                        pass
+                        
+            await asyncio.to_thread(backup_db)
+            print(f"✅ DBバックアップを作成しました: {backup_path}")
+        except Exception as e:
+            print(f"⚠️ DBバックアップエラー: {e}")
+
+    @db_backup_task.before_loop
+    async def before_db_backup_task(self):
         await self.bot.wait_until_ready()
 
     @tasks.loop(hours=1)

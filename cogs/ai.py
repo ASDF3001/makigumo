@@ -22,6 +22,8 @@ class AI(commands.Cog):
         self.bot = bot
         self.api_keys = api_keys
         self.histories = {}
+        self.history_timestamps = {}
+        self.clients = {}  # APIキーごとのキャッシュ
         self.system_instruction = (
             "【まきぐもの絶対不変のコア属性（破綻禁止・最優先遵守）】\n"
             "1. あなたは「まきぐも」という名前の【女の子（女性・メイド）】です。男性ではありません。自身の性別は必ず女性として振る舞ってください。ユーザーのことは「変態さん」または名前で呼びます。\n"
@@ -41,35 +43,66 @@ class AI(commands.Cog):
             "【追加プロンプト・シチュエーション設定の適用ルール】\n"
             "上記の絶対コア属性（女性・メイド・ZETA記法・開発者設定）を崩さない範囲で、ユーザーが指定した追加シチュエーション・口調・性格設定を最優先で反映してください。"
         )
+        self.cached_features = ""
+        self.cached_update = ""
+        self._load_caches()
+        if not self.cleanup_histories.is_running():
+            self.cleanup_histories.start()
 
-    async def _generate_ai_reply(self, user_id, display_name, msg_content):
+    def cog_unload(self):
+        self.cleanup_histories.cancel()
+
+    @commands.ext.tasks.loop(hours=1)
+    async def cleanup_histories(self):
+        import time
+        now = time.time()
+        to_delete = []
+        for uid, ts in self.history_timestamps.items():
+            if now - ts > 86400:  # 24時間アクセスなしでメモリから破棄
+                to_delete.append(uid)
+        for uid in to_delete:
+            self.histories.pop(uid, None)
+            self.history_timestamps.pop(uid, None)
+
+    @cleanup_histories.before_loop
+    async def before_cleanup_histories(self):
+        await self.bot.wait_until_ready()
+
+    def _load_caches(self):
+        try:
+            if os.path.exists("FEATURES.md"):
+                with open("FEATURES.md", "r", encoding="utf-8") as f:
+                    self.cached_features = f.read()
+        except Exception:
+            pass
+
+        try:
+            if os.path.exists("update"):
+                files = [f for f in os.listdir("update") if f.endswith(".txt")]
+                if files:
+                    files.sort(reverse=True)
+                    with open(os.path.join("update", files[0]), "r", encoding="utf-8") as f:
+                        self.cached_update = f.read()[:1000]
+        except Exception:
+            pass
+
+    async def _generate_ai_reply(self, user_id, display_name, msg_content, attachments=None):
         from datetime import datetime, timezone, timedelta
+        import time
         now_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
         user_plan = self.bot.get_user_plan(user_id)
         is_owner = self.bot.is_owner(user_id)
         is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
         
-        if is_owner:
-            max_daily = 999999
-        elif is_promax:
-            max_daily = 1000
-        elif is_pro:
-            max_daily = 300
-        else:
-            max_daily = 100
-        
         import sqlite3
-        daily_count = 0
         try:
             with sqlite3.connect("database.db", timeout=30.0) as conn:
                 c = conn.cursor()
                 row = c.execute("SELECT daily_ai_count, last_reset_date FROM user_subscriptions WHERE user_id = ?", (str(user_id),)).fetchone()
                 if row:
                     cnt, l_date = row
-                    if l_date == now_date:
-                        daily_count = cnt
-                    else:
+                    if l_date != now_date:
                         c.execute("UPDATE user_subscriptions SET daily_ai_count = 0, last_reset_date = ? WHERE user_id = ?", (now_date, str(user_id)))
                         conn.commit()
                 else:
@@ -78,17 +111,11 @@ class AI(commands.Cog):
         except Exception:
             pass
 
-        if not is_owner and daily_count >= max_daily:
-            if is_promax:
-                return None, "「ご主人様、本日のPro Max会話上限（1,000回）に達しました！\nたくさんお話ししてくれてとっても幸せです♡ また明日いっぱい愛してくださいね！」"
-            elif is_pro:
-                return None, "「ご主人様、本日のPro会話上限（300回）に達しました！\nたくさんお話ししてくれて嬉しいです♡ また明日いっぱい構ってくださいね！（`/pro` で1日1000回・記憶200件のPro Maxもご用意してます♡）」"
-            else:
-                return None, "「本日の無料会話制限（100回）に達しました！\n明日また話しかけてくれるか、`/pro` でProプラン（1日300回〜1000回・記憶超大容量）をチェックしてみてくださいね♡」"
-
         key = random.choice(self.api_keys)
         if user_id not in self.histories:
             self.histories[user_id] = []
+        
+        self.history_timestamps[user_id] = time.time()
             
         history = self.histories[user_id]
         user_msg = f"{display_name}からのメッセージ: {msg_content}"
@@ -100,31 +127,11 @@ class AI(commands.Cog):
         
         system_instruction = self.system_instruction
 
-        # まきぐもの全機能一覧を読み込んでAIに教える
-        try:
-            features_file = "FEATURES.md"
-            if os.path.exists(features_file):
-                with open(features_file, "r", encoding="utf-8") as f:
-                    features_info = f.read()
-                system_instruction = f"{system_instruction}\n\n【まきぐもの全機能一覧（ユーザーに使い方を聞かれたときや機能を自慢するときに使ってね）】\n{features_info}"
-        except Exception:
-            pass
+        if self.cached_features:
+            system_instruction = f"{system_instruction}\n\n【まきぐもの全機能一覧（ユーザーに使い方を聞かれたときや機能を自慢するときに使ってね）】\n{self.cached_features}"
+        if self.cached_update:
+            system_instruction = f"{system_instruction}\n\n【最新のアップデート情報（ユーザーに新機能を自慢・説明するときに使ってね）】\n{self.cached_update}"
 
-        # 最新のアップデート情報を読み込んでAIに教える
-        try:
-            update_dir = "update"
-            if os.path.exists(update_dir):
-                files = [f for f in os.listdir(update_dir) if f.endswith(".txt")]
-                if files:
-                    files.sort(reverse=True)
-                    latest_file = os.path.join(update_dir, files[0])
-                    with open(latest_file, "r", encoding="utf-8") as f:
-                        update_info = f.read()
-                    # 1000文字程度に制限してシステムプロンプトに追記
-                    update_info = update_info[:1000]
-                    system_instruction = f"{system_instruction}\n\n【最新のアップデート情報（ユーザーに新機能を自慢・説明するときに使ってね）】\n{update_info}"
-        except Exception:
-            pass
 
         # ユーザー固有のカスタムプロンプト・メモ（最優先適用）
         import sqlite3
@@ -141,11 +148,23 @@ class AI(commands.Cog):
         except Exception:
             pass
 
+        uploaded_files = []
+        user_parts = []
+        
+        if attachments:
+            for att in attachments:
+                user_parts.append(att)
+
+        user_parts.append(user_msg)
+        
         if HAS_NEW_GENAI:
-            http_opts = None
-            if base_url:
-                http_opts = types.HttpOptions(base_url=base_url.rstrip("/"))
-            client = genai.Client(api_key=key, http_options=http_opts)
+            if key not in self.clients:
+                http_opts = None
+                if base_url:
+                    http_opts = types.HttpOptions(base_url=base_url.rstrip("/"))
+                self.clients[key] = genai.Client(api_key=key, http_options=http_opts)
+            
+            client = self.clients[key]
             
             if not hasattr(self, "available_models_cache"):
                 try:
@@ -162,12 +181,54 @@ class AI(commands.Cog):
             
             models_to_try = self.available_models_cache
             
+            import tempfile
+            gemini_files = []
+            upload_error = None
+            if attachments:
+                for att in attachments:
+                    ext = att.filename.lower().split('.')[-1]
+                    is_image = ext in ['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif']
+                    is_video = ext in ['mp4', 'mpeg', 'mov', 'avi', 'flv', 'mpg', 'webm', 'wmv', '3gpp']
+                    is_audio = ext in ['wav', 'mp3', 'aiff', 'aac', 'ogg', 'flac']
+                    
+                    if not (is_image or is_video or is_audio):
+                        continue
+                        
+                    if not is_pro and not is_promax:
+                        upload_error = "「画像や動画を見せるにはProプラン以上が必要です♡ (`/pro`)」"
+                        break
+                    if (is_video or is_audio) and not is_promax:
+                        upload_error = "「動画や音声を私に見せるにはPro MAXプランが必要です♡ (`/pro`)」"
+                        break
+                        
+                    max_size = 50 * 1024 * 1024 if is_promax else 5 * 1024 * 1024
+                    if att.size > max_size:
+                        upload_error = f"「ファイルが大きすぎます！({max_size // (1024*1024)}MB以下にしてくださいね)」"
+                        break
+                        
+                    try:
+                        fd, temp_path = tempfile.mkstemp(suffix=f".{ext}")
+                        os.close(fd)
+                        await att.save(temp_path)
+                        gemini_file = await asyncio.to_thread(client.files.upload, file=temp_path)
+                        gemini_files.append((gemini_file, temp_path))
+                        user_parts.insert(0, gemini_file)
+                    except Exception as e:
+                        print(f"File upload error: {e}")
+                        upload_error = "「ファイルの読み込みに失敗しました……」"
+                        break
+            
+            if upload_error:
+                return None, upload_error
+                
             past_contents = []
             for item in history:
-                past_contents.append(types.Content(
-                    role=item["role"],
-                    parts=[types.Part.from_text(text=item["parts"][0])]
-                ))
+                pts = []
+                for p in item["parts"]:
+                    if isinstance(p, str):
+                        pts.append(types.Part.from_text(text=p))
+                if pts:
+                    past_contents.append(types.Content(role=item["role"], parts=pts))
             
             for model_name in models_to_try:
                 try:
@@ -178,7 +239,8 @@ class AI(commands.Cog):
                         ),
                         history=past_contents
                     )
-                    response = await asyncio.to_thread(chat.send_message, user_msg)
+                    
+                    response = await asyncio.to_thread(chat.send_message, user_parts)
                     if response and response.text:
                         reply = response.text
                         break
@@ -188,6 +250,16 @@ class AI(commands.Cog):
                     if "User location is not supported" in err_s or "FAILED_PRECONDITION" in err_s:
                         break
                     continue
+                    
+            for g_f, t_p in gemini_files:
+                try:
+                    await asyncio.to_thread(client.files.delete, name=g_f.name)
+                except:
+                    pass
+                try:
+                    os.remove(t_p)
+                except:
+                    pass
         else:
             models_to_try = getattr(self, "available_models_cache", ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash'])
             for model_name in models_to_try:
@@ -213,13 +285,13 @@ class AI(commands.Cog):
             history.append({"role": "user", "parts": [user_msg]})
             history.append({"role": "model", "parts": [reply]})
             
-            # Pro Max/Ownerは往復100件(計200件)、Proは往復50件(計100件)、無料は往復25件(計50件)
+            # Pro Max/Ownerは往復200件(計400件)、Proは往復100件(計200件)、無料は往復50件(計100件)
             if is_promax or is_owner:
-                history_limit = 200
+                history_limit = 400
             elif is_pro:
-                history_limit = 100
+                history_limit = 200
             else:
-                history_limit = 50
+                history_limit = 100
 
             if len(history) > history_limit:
                 self.histories[user_id] = history[-history_limit:]
@@ -274,7 +346,7 @@ class AI(commands.Cog):
                 return await message.channel.send("「AI機能を使うには `google-genai` ライブラリが必要です！」")
                 
             async with message.channel.typing():
-                reply, err_msg = await self._generate_ai_reply(str(message.author.id), message.author.display_name, message.content)
+                reply, err_msg = await self._generate_ai_reply(str(message.author.id), message.author.display_name, message.content, attachments=message.attachments)
                 target_text = reply if reply else err_msg
                 try:
                     await message.reply(target_text)
@@ -523,10 +595,9 @@ class AI(commands.Cog):
 
 async def setup(bot):
     api_keys = []
-    for i in range(1, 11):
-        k = os.getenv(f"GEMINI_API_KEY_{i}")
-        if k:
-            api_keys.append(k)
+    for key, val in os.environ.items():
+        if key.startswith("GEMINI_API_KEY_") and val:
+            api_keys.append(val)
             
     if not api_keys:
         print("GEMINI_API_KEY_* が設定されていないため、AI機能を無効化します。")

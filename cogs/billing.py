@@ -187,6 +187,15 @@ class AdminApprovalView(discord.ui.View):
                 "ON CONFLICT(user_id) DO UPDATE SET plan_type = ?, expires_at = ?, reminded_3days = 0",
                 (self.target_user_id, plan_type, expires_at, plan_type, expires_at)
             )
+            
+            # 称号の付与
+            title_to_grant = "💎 筆頭変態紳士"
+            if 'promax' in plan_type:
+                title_to_grant = "👑 まきぐもの愛人"
+            
+            # 現在の称号を上書き設定（既に別の称号を設定している場合は考慮する等もありますが、今回は上書き）
+            c.execute("INSERT OR REPLACE INTO user_titles (user_id, equipped_title) VALUES (?, ?)", (self.target_user_id, title_to_grant))
+            
             c.execute("UPDATE gift_requests SET status = 'approved' WHERE request_id = ?", (self.req_id,))
             conn.commit()
 
