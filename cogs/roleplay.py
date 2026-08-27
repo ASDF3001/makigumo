@@ -18,7 +18,7 @@ class HelpView(discord.ui.View):
             return e
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
-            e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話（往復50件記憶）\n`/ai_mode` : 性格モードワンタッチ変更\n`/reset_ai` : AI記憶リセット\n`/user_settings` : カスタムプロンプト設定\n`/update` / `/version`", inline=False)
+            e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話（往復50件記憶）\n`/ai_mode` : 性格モードワンタッチ変更\n`/reset_ai` : AI記憶リセット\n`/user_settings` : カスタムプロンプト設定\n`/profile` : 誕生日・所在地（AI自動補正）・メモの設定\n`/update` / `/version`", inline=False)
             e.add_field(name="シチュエーション＆エンタメ", value="`/gacha` : まきぐもガチャ\n`/omikuji` : 変態おみくじ（1日1回）\n`/present` : まきぐもにお貢ぎ・プレゼント\n`/お仕置き` / `/罵倒` / `/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`", inline=False)
             return e
         elif category == "game":
@@ -177,9 +177,8 @@ class Roleplay(commands.Cog):
             await interaction.followup.send(f"❌ エラーが発生しました: {e}", ephemeral=is_ephemeral)
 
 
-    @app_commands.command(name="info", description="まきぐもの使い方・コマンド・各種リンクをご案内します")
+    @app_commands.command(name="info", description="まきぐもの各種リンクをご案内します")
     @app_commands.choices(項目=[
-        app_commands.Choice(name="使い方 (help)", value="help"),
         app_commands.Choice(name="全コマンド一覧 (command)", value="command"),
         app_commands.Choice(name="サーバー招待リンク (invite)", value="invite"),
         app_commands.Choice(name="公式サポートサーバー (server)", value="server"),
@@ -187,16 +186,7 @@ class Roleplay(commands.Cog):
     ])
     async def info(self, interaction: discord.Interaction, 項目: app_commands.Choice[str]):
         await interaction.response.defer(ephemeral=True)
-        if 項目.value == "help":
-            embed = discord.Embed(title="🎀 まきぐもちゃんの使い方", color=0xff69b4)
-            embed.add_field(name="1. おしゃべりする", value="`/ai <メッセージ>` で私とチャットできます。文脈も完璧に覚えてますよ♡\n直接DMを送ってくれても構いません。", inline=False)
-            embed.add_field(name="2. ポインツを稼ぐ", value="`/daily` で毎日ポインツをもらったり、`/work` でバイトできます。", inline=False)
-            embed.add_field(name="3. 遊ぶ", value="`/play` で色んなシチュエーションを楽しめます。`/ガチャ` や `/omikuji` もありますよ。", inline=False)
-            embed.add_field(name="4. プロフィールを設定する", value="`/profile` で誕生日や所在地を登録できます！\n所在地はAIが自動補正してくれるので、細かい地名でも登録可能です♡", inline=False)
-            embed.add_field(name="5. もっと知りたい時は", value="`/info` の「全コマンド一覧」を見てくださいね！", inline=False)
-            await interaction.followup.send(embed=embed, ephemeral=True)
-            
-        elif 項目.value == "command":
+        if 項目.value == "command":
             embed = discord.Embed(title="📜 まきぐもコマンド早見表", color=0xadd8e6)
             rp_cmds = "`/play` (各種シチュエーション統合)"
             eco_cmds = "`/slot` `/gamble` `/work` `/pay` `/daily` `/shop` `/use` `/ranking` `/stats` `/titles`"
