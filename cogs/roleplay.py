@@ -192,7 +192,8 @@ class Roleplay(commands.Cog):
             embed.add_field(name="1. おしゃべりする", value="`/ai <メッセージ>` で私とチャットできます。文脈も完璧に覚えてますよ♡\n直接DMを送ってくれても構いません。", inline=False)
             embed.add_field(name="2. ポインツを稼ぐ", value="`/daily` で毎日ポインツをもらったり、`/work` でバイトできます。", inline=False)
             embed.add_field(name="3. 遊ぶ", value="`/play` で色んなシチュエーションを楽しめます。`/ガチャ` や `/omikuji` もありますよ。", inline=False)
-            embed.add_field(name="4. もっと知りたい時は", value="`/info` の「全コマンド一覧」を見てくださいね！", inline=False)
+            embed.add_field(name="4. プロフィールを設定する", value="`/profile` で誕生日や所在地を登録できます！\n所在地はAIが自動補正してくれるので、細かい地名でも登録可能です♡", inline=False)
+            embed.add_field(name="5. もっと知りたい時は", value="`/info` の「全コマンド一覧」を見てくださいね！", inline=False)
             await interaction.followup.send(embed=embed, ephemeral=True)
             
         elif 項目.value == "command":
