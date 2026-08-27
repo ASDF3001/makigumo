@@ -265,7 +265,7 @@ class MakigumoBot(commands.AutoShardedBot):
     async def setup_hook(self):
         self.loop.create_task(self._web_server())
         # cogsフォルダ内の各ファイルを読み込む
-        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling', 'cogs.billing', 'cogs.report', 'cogs.live_call']:
+        for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling', 'cogs.billing', 'cogs.report', 'cogs.live_call', 'cogs.profile', 'cogs.notifications']:
             try:
                 await self.load_extension(cog)
                 print(f"✅ {cog} の読み込みに成功しました")

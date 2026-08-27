@@ -35,6 +35,9 @@ def _translate_query(query):
         elif "levels" in query:
             query = query.replace("INSERT OR REPLACE INTO levels", "INSERT INTO levels")
             query += " ON CONFLICT(user_id) DO UPDATE SET xp=EXCLUDED.xp, level=EXCLUDED.level"
+        elif "user_locations" in query:
+            query = query.replace("INSERT OR REPLACE INTO user_locations", "INSERT INTO user_locations")
+            query += " ON CONFLICT(user_id) DO UPDATE SET address=EXCLUDED.address, pref=EXCLUDED.pref, lat=EXCLUDED.lat, lon=EXCLUDED.lon"
             
     if "INSERT OR IGNORE INTO economy" in query:
         query = query.replace("INSERT OR IGNORE INTO economy", "INSERT INTO economy")
@@ -51,12 +54,14 @@ class PgShimCursor:
 
     def execute(self, query, vars=None):
         if "PRAGMA" in query or "CREATE TABLE IF NOT EXISTS" in query:
-            # We skip table creation/pragma because migrate_to_postgres handles it, 
-            # and we assume tables exist. Or we can let create table run but PG syntax is slightly diff for AUTOINCREMENT.
             if "PRAGMA" in query:
                 return self
             if "AUTOINCREMENT" in query:
                 query = query.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+            
+            # 既存テーブル以外の新規作成用
+            if "user_locations" in query and "CREATE TABLE" in query:
+                query = query.replace("REAL", "DOUBLE PRECISION")
         
         query = _translate_query(query)
         if vars:

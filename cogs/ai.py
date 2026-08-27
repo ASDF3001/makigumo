@@ -455,48 +455,6 @@ class AI(commands.Cog):
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="memo", description="まきぐもちゃんにあなたについての秘密のメモ（設定・記憶させたいこと）を教えます")
-    @app_commands.describe(内容="AIに覚えておいてほしいこと（空欄でメモを削除します）")
-    async def memo(self, interaction: discord.Interaction, 内容: str = None):
-        user_id = str(interaction.user.id)
-        is_owner = self.bot.is_owner(user_id)
-        is_promax = self.bot.is_promax(user_id)
-        is_pro = self.bot.is_pro(user_id)
-        
-        if is_owner:
-            max_len = 1000
-        elif is_promax:
-            max_len = 600
-        elif is_pro:
-            max_len = 300
-        else:
-            max_len = 100
-        
-        await interaction.response.defer(ephemeral=True)
-
-        if 内容 and len(内容) > max_len:
-            if not is_pro:
-                return await interaction.followup.send(f"❌ メモは100文字以内で入力してください！（現在: {len(内容)}文字）\n※Proプランなら最大300文字、Pro Maxなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
-            elif is_promax:
-                return await interaction.followup.send(f"❌ メモは600文字以内で入力してください！（現在: {len(内容)}文字）", ephemeral=True)
-            else:
-                return await interaction.followup.send(f"❌ メモは300文字以内で入力してください！（現在: {len(内容)}文字）\n※Pro Maxプランなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
-
-        import pg_shim as sqlite3
-        try:
-            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
-                c = conn.cursor()
-                if 内容:
-                    c.execute("INSERT OR REPLACE INTO user_memos (user_id, memo) VALUES (?, ?)", (user_id, 内容))
-                    conn.commit()
-                    await interaction.followup.send(f"📝 **まきぐもメモ帳に追記しました！**\n\n「なるほど、あなたは『{内容}』なんですね…ふふっ、しっかり私のメモ帳に刻み込んでおきましたよ♡」", ephemeral=True)
-                else:
-                    c.execute("DELETE FROM user_memos WHERE user_id = ?", (user_id,))
-                    conn.commit()
-                    await interaction.followup.send("🗑️ **メモを綺麗サッパリ消去しました！**\n\n「えっ、消しちゃうんですか？ まぁ、あなたの言う通りにしてあげますけど……次はもっと変態なこと教えてくださいね？」", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"❌ メモ帳の書き込みに失敗しました: {e}", ephemeral=True)
-
     @app_commands.command(name="reset_ai", description="まきぐもAIとの会話記憶をリセットします")
     async def reset_ai(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)

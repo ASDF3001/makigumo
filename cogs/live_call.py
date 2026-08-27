@@ -116,6 +116,7 @@ class LiveCall(commands.Cog):
         cog_ai = self.bot.get_cog("AI")
         system_instruction = cog_ai.system_instruction if cog_ai else "あなたはまきぐもです。"
         config["system_instruction"] = types.Content(parts=[types.Part.from_text(text=system_instruction)])
+        config["tools"] = [{"google_search": {}}]
         
         try:
             async with client.aio.live.connect(model="gemini-2.0-flash-exp", config=config) as session:
