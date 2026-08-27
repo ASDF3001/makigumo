@@ -222,7 +222,7 @@ class Roleplay(commands.Cog):
         from datetime import datetime
         today_str = datetime.now().strftime("%Y-%m-%d")
         
-        import sqlite3
+        import pg_shim as sqlite3
         already_drawn = False
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
@@ -288,7 +288,7 @@ class Roleplay(commands.Cog):
         u_data["points"] -= cost
         self.bot.mark_economy_dirty()
 
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -316,7 +316,7 @@ class Roleplay(commands.Cog):
         if not (1 <= 月 <= 12) or not (1 <= 日 <= 31):
             return await interaction.followup.send("❌ 月は1〜12、日は1〜31の数字で入力してくださいね！", ephemeral=True)
             
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()

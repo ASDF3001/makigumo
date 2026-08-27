@@ -277,7 +277,7 @@ class Economy(commands.Cog):
     async def ranking(self, interaction: discord.Interaction, 種類: app_commands.Choice[str] = None):
         await interaction.response.defer()
         rank_type = 種類.value if 種類 else "points"
-        import sqlite3
+        import pg_shim as sqlite3
 
         items = []
         unit = "pt"
@@ -361,7 +361,7 @@ class Economy(commands.Cog):
 
         ai_count, cmd_count, present_count = 0, 0, 0
         equipped_title = None
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -472,7 +472,7 @@ class Economy(commands.Cog):
         lvl = lvl_info.get("level", 1)
         
         ai_count, cmd_count, present_count = 0, 0, 0
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()

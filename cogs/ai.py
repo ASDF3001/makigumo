@@ -96,7 +96,7 @@ class AI(commands.Cog):
         is_promax = self.bot.is_promax(user_id)
         is_pro = self.bot.is_pro(user_id)
         
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -135,7 +135,7 @@ class AI(commands.Cog):
 
 
         # ユーザー固有のカスタムプロンプト・メモ（最優先適用）
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -380,7 +380,7 @@ class AI(commands.Cog):
             max_diary = 1
         
         diary_count = 0
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -482,7 +482,7 @@ class AI(commands.Cog):
             else:
                 return await interaction.followup.send(f"❌ メモは300文字以内で入力してください！（現在: {len(内容)}文字）\n※Pro Maxプランなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
 
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -519,7 +519,7 @@ class AI(commands.Cog):
     ])
     async def ai_mode(self, interaction: discord.Interaction, モード: app_commands.Choice[str]):
         user_id = str(interaction.user.id)
-        import sqlite3
+        import pg_shim as sqlite3
         
         mode_prompts = {
             "default": None,
@@ -578,7 +578,7 @@ class AI(commands.Cog):
             else:
                 return await interaction.followup.send(f"❌ カスタムプロンプトは300文字以内で入力してください！（現在: {len(プロンプト)}文字）\n※Pro Maxプランなら最大600文字まで拡張されます♡ (`/pro`)", ephemeral=True)
 
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()

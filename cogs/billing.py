@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 import os
 import contextlib
-import sqlite3
+import pg_shim as sqlite3
 from datetime import datetime, timezone, timedelta
 
 class PaymentModal(discord.ui.Modal, title="✨ まきぐも Proプラン 支払い申請"):

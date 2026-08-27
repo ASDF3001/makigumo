@@ -123,7 +123,7 @@ class Events(commands.Cog):
             stream_url = "https://rds9.pages.dev/"
 
             chat_count, cmd_count = 0, 0
-            import sqlite3
+            import pg_shim as sqlite3
             try:
                 with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
@@ -209,11 +209,18 @@ class Events(commands.Cog):
             
             # Flush WAL and checkpoint if needed, but simple copy is usually fine for sqlite if not mid-transaction, 
             # or better: use sqlite3 backup API.
-            import sqlite3
+            import pg_shim as sqlite3
             import asyncio
             
             def backup_db():
-                with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as src, contextlib.closing(sqlite3.connect(backup_path)) as dst:
+                import os
+                if os.getenv("DATABASE_URL"):
+                    return
+                import sqlite3 as raw_sqlite3
+                if hasattr(raw_sqlite3, 'pool'):
+                    import importlib
+                    raw_sqlite3 = importlib.import_module("sqlite3")
+                with contextlib.closing(raw_sqlite3.connect("database.db", timeout=30.0)) as src, contextlib.closing(raw_sqlite3.connect(backup_path)) as dst:
                     src.backup(dst)
                 
                 # Keep only last 5 backups
@@ -241,7 +248,7 @@ class Events(commands.Cog):
         
         now = datetime.now(timezone(timedelta(hours=9)))
         m, d, y = now.month, now.day, now.year
-        import sqlite3
+        import pg_shim as sqlite3
         try:
             with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
@@ -340,7 +347,7 @@ class Events(commands.Cog):
         if triggered:
             def _record_chat_stats(author_id_str):
                 try:
-                    import sqlite3
+                    import pg_shim as sqlite3
                     with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                         c = conn.cursor()
                         c.execute("INSERT INTO bot_stats (key, val) VALUES ('chat_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
@@ -364,7 +371,7 @@ class Events(commands.Cog):
     async def on_app_command_completion(self, interaction: discord.Interaction, command: discord.app_commands.Command):
         def _record_cmd_stats(user_id_str, cmd_name):
             try:
-                import sqlite3
+                import pg_shim as sqlite3
                 with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
                     c.execute("INSERT INTO bot_stats (key, val) VALUES ('cmd_count', 1) ON CONFLICT(key) DO UPDATE SET val = val + 1")
