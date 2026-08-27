@@ -148,14 +148,11 @@ class AI(commands.Cog):
         except Exception:
             pass
 
-        uploaded_files = []
         user_parts = []
         
-        if attachments:
-            for att in attachments:
-                user_parts.append(att)
-
-        user_parts.append(user_msg)
+        # We will append the text prompt first, or at the end. Usually at the end is fine.
+        # Attachments will be uploaded and inserted into user_parts.
+        
         
         if HAS_NEW_GENAI:
             if key not in self.clients:
@@ -212,7 +209,7 @@ class AI(commands.Cog):
                         await att.save(temp_path)
                         gemini_file = await asyncio.to_thread(client.files.upload, file=temp_path)
                         gemini_files.append((gemini_file, temp_path))
-                        user_parts.insert(0, gemini_file)
+                        user_parts.append(gemini_file)
                     except Exception as e:
                         print(f"File upload error: {e}")
                         upload_error = "「ファイルの読み込みに失敗しました……」"
@@ -221,6 +218,8 @@ class AI(commands.Cog):
             if upload_error:
                 return None, upload_error
                 
+            user_parts.append(user_msg)
+            
             past_contents = []
             for item in history:
                 pts = []
