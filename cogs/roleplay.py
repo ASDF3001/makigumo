@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import random
 import os
+import contextlib
 
 class HelpView(discord.ui.View):
     def __init__(self):
@@ -224,7 +225,7 @@ class Roleplay(commands.Cog):
         import sqlite3
         already_drawn = False
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 row = c.execute("SELECT last_date FROM omikuji_logs WHERE user_id = ?", (user_id,)).fetchone()
                 if row and row[0] == today_str:
@@ -255,7 +256,7 @@ class Roleplay(commands.Cog):
         self.bot.mark_economy_dirty()
 
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 c.execute("INSERT OR REPLACE INTO omikuji_logs (user_id, last_date) VALUES (?, ?)", (user_id, today_str))
                 conn.commit()
@@ -289,7 +290,7 @@ class Roleplay(commands.Cog):
 
         import sqlite3
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 c.execute("INSERT INTO user_stats (user_id, stat_key, val) VALUES (?, 'present_count', 1) ON CONFLICT(user_id, stat_key) DO UPDATE SET val = val + 1", (user_id,))
                 conn.commit()
@@ -317,7 +318,7 @@ class Roleplay(commands.Cog):
             
         import sqlite3
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 c.execute("INSERT OR REPLACE INTO birthdays (user_id, month, day, last_notified) VALUES (?, ?, ?, 0)", (str(interaction.user.id), 月, 日))
                 conn.commit()

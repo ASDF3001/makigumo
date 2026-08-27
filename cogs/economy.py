@@ -297,7 +297,7 @@ class Economy(commands.Cog):
             sk, title, unit = sk_map[rank_type]
             desc_header = f"現在最も{sk_map[rank_type][1].replace('トップ10', '')}が多い変態さんたちです♡"
             try:
-                with sqlite3.connect("database.db", timeout=30.0) as conn:
+                with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
                     rows = c.execute("SELECT user_id, val FROM user_stats WHERE stat_key = ? ORDER BY val DESC LIMIT 10", (sk,)).fetchall()
                     for r in rows:
@@ -309,7 +309,7 @@ class Economy(commands.Cog):
             desc_header = "現在最もレベルとXPが高い変態さんたちです♡"
             unit = "Lv"
             try:
-                with sqlite3.connect("database.db", timeout=30.0) as conn:
+                with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                     c = conn.cursor()
                     rows = c.execute("SELECT user_id, level, xp FROM levels ORDER BY level DESC, xp DESC LIMIT 10").fetchall()
                     for r in rows:
@@ -363,7 +363,7 @@ class Economy(commands.Cog):
         equipped_title = None
         import sqlite3
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
                     sk, v = row[0], row[1]
@@ -474,7 +474,7 @@ class Economy(commands.Cog):
         ai_count, cmd_count, present_count = 0, 0, 0
         import sqlite3
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 for row in c.execute("SELECT stat_key, val FROM user_stats WHERE user_id = ?", (user_id,)):
                     sk, v = row[0], row[1]
@@ -547,7 +547,7 @@ class Economy(commands.Cog):
             async def callback(self, interact: discord.Interaction):
                 selected = self.values[0]
                 try:
-                    with sqlite3.connect("database.db", timeout=30.0) as conn:
+                    with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                         cu = conn.cursor()
                         cu.execute("INSERT OR REPLACE INTO user_titles (user_id, equipped_title) VALUES (?, ?)", (str(interact.user.id), selected))
                         conn.commit()

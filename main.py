@@ -3,6 +3,7 @@ from discord.ext import commands
 import json
 import sqlite3
 import os
+import contextlib
 import random
 from dotenv import load_dotenv
 
@@ -33,7 +34,7 @@ class MakigumoBot(commands.AutoShardedBot):
         self.load_all_lines_to_memory()
 
     def load_settings(self):
-        with sqlite3.connect("database.db", timeout=30.0) as conn:
+        with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
             c = conn.cursor()
             c.execute("PRAGMA journal_mode=WAL")
             c.execute("CREATE TABLE IF NOT EXISTS economy (user_id TEXT PRIMARY KEY, data TEXT)")
@@ -102,7 +103,7 @@ class MakigumoBot(commands.AutoShardedBot):
                 self.shop_items = {}
 
     def save_settings(self):
-        with sqlite3.connect("database.db", timeout=30.0) as conn:
+        with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
             c = conn.cursor()
             for gid, channels in self.channel_settings.items():
                 c.execute("INSERT OR REPLACE INTO channel_settings (guild_id, channels) VALUES (?, ?)", (gid, json.dumps(channels, ensure_ascii=False)))
@@ -110,7 +111,7 @@ class MakigumoBot(commands.AutoShardedBot):
 
     def _save_economy_sync_task(self):
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 eco_items = [(uid, json.dumps(data, ensure_ascii=False)) for uid, data in list(self.economy.items())]
                 if eco_items:
@@ -202,7 +203,7 @@ class MakigumoBot(commands.AutoShardedBot):
         if self.is_owner(uid):
             return 'owner'
         try:
-            with sqlite3.connect("database.db", timeout=30.0) as conn:
+            with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
                 c = conn.cursor()
                 row = c.execute("SELECT plan_type, expires_at FROM user_subscriptions WHERE user_id = ?", (uid,)).fetchone()
                 if not row:
