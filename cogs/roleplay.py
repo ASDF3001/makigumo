@@ -19,7 +19,7 @@ class HelpView(discord.ui.View):
         elif category == "rp":
             e = discord.Embed(title="💕 シチュエーション・お遊び", color=0xffb6c1)
             e.add_field(name="AI・カスタム機能", value="`/ai` : AI会話（往復50件記憶）\n`/ai_mode` : 性格モードワンタッチ変更\n`/reset_ai` : AI記憶リセット\n`/user_settings` : カスタムプロンプト設定\n`/profile` : 誕生日・所在地（AI自動補正）・メモの設定\n`/update` / `/version`", inline=False)
-            e.add_field(name="シチュエーション＆エンタメ", value="`/gacha` : まきぐもガチャ\n`/omikuji` : 変態おみくじ（1日1回）\n`/present` : まきぐもにお貢ぎ・プレゼント\n`/お仕置き` / `/罵倒` / `/看病` / `/嫉妬` / `/喘げ` / `/おねだり` / `/添い寝` / `/耳打ち` / `/相性` / `/豆知識`", inline=False)
+            e.add_field(name="シチュエーション＆エンタメ", value="`/play` : 各種シチュエーション（お仕置き/罵倒/看病/嫉妬/喘ぐ/おねだり/添い寝/耳打ち）\n`/gacha` : まきぐもガチャ\n`/omikuji` : 変態おみくじ（1日1回）\n`/present` : まきぐもにお貢ぎ・プレゼント\n`/相性` / `/豆知識`", inline=False)
             return e
         elif category == "game":
             e = discord.Embed(title="🎰 ギャンブル＆レベル・ステータス", color=0xffb6c1)
