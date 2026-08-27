@@ -76,6 +76,9 @@ class PgShimCursor:
     def fetchall(self):
         return self.cursor.fetchall()
 
+    def __iter__(self):
+        return iter(self.cursor)
+
 class PgShimConnection:
     def __init__(self, conn):
         self.conn = conn
