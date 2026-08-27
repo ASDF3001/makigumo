@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 import random
 import asyncio
@@ -52,7 +52,7 @@ class AI(commands.Cog):
     def cog_unload(self):
         self.cleanup_histories.cancel()
 
-    @commands.ext.tasks.loop(hours=1)
+    @tasks.loop(hours=1)
     async def cleanup_histories(self):
         import time
         now = time.time()
