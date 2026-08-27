@@ -53,5 +53,21 @@ class Report(commands.Cog):
         else:
             await interaction.followup.send("✅ 報告を受け付けました！ネットワークが不安定なため、サーバーの緊急ログファイルに直接書き込みました。", ephemeral=True)
 
+
+    @app_commands.command(name="download_db", description="【開発者専用】現在のデータベースファイルをDiscord経由でダウンロードします")
+    async def download_db_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        if not self.bot.is_owner(str(interaction.user.id)):
+            await interaction.followup.send("このコマンドは開発者専用です。")
+            return
+            
+        import os
+        if not os.path.exists("database.db"):
+            await interaction.followup.send("database.db が見つかりません。")
+            return
+            
+        file = discord.File("database.db", filename="database.db")
+        await interaction.followup.send("📦 データベースのバックアップファイルです！", file=file)
+
 async def setup(bot):
     await bot.add_cog(Report(bot))
