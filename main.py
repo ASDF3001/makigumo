@@ -251,7 +251,19 @@ class MakigumoBot(commands.AutoShardedBot):
         # 上限を 0.35 (+35%) に設定（基本40% + 最大35% = 勝率最大75%）
         return min(bonus, 0.35)
 
+
+    async def _web_server(self):
+        app = web.Application()
+        app.router.add_get('/', lambda r: web.Response(text="Makigumo is alive!"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get('PORT', 8080))
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        print(f"Web server started on port {port} for UptimeRobot!")
+
     async def setup_hook(self):
+        self.loop.create_task(self._web_server())
         # cogsフォルダ内の各ファイルを読み込む
         for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling', 'cogs.billing', 'cogs.report', 'cogs.live_call']:
             try:
