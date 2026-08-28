@@ -124,6 +124,73 @@ class Roleplay(commands.Cog):
         self.bot.save_settings()
         await interaction.followup.send(f"了解です♡ これから指定されたチャンネルでのみお返事しますね。")
 
+    @app_commands.command(name="cmd_setting", description="コマンドを実行できるチャンネルやカテゴリを指定・確認します(管理者用)")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.checks.has_permissions(manage_channels=True)
+    async def cmd_setting(
+        self,
+        interaction: discord.Interaction,
+        チャンネル1: discord.abc.GuildChannel = None,
+        チャンネル2: discord.abc.GuildChannel = None,
+        チャンネル3: discord.abc.GuildChannel = None,
+        カテゴリ1: discord.CategoryChannel = None,
+        カテゴリ2: discord.CategoryChannel = None,
+        カテゴリ3: discord.CategoryChannel = None,
+        制限解除: bool = False
+    ):
+        await interaction.response.defer(ephemeral=True)
+        guild_id = str(interaction.guild_id)
+
+        if 制限解除:
+            self.bot.cmd_channel_settings.pop(guild_id, None)
+            self.bot.save_cmd_settings(guild_id)
+            return await interaction.followup.send("✅ コマンドのチャンネル・カテゴリ制限を解除しました！(すべてのチャンネルでコマンドが使用可能です)", ephemeral=True)
+
+        raw_channels = [ch for ch in [チャンネル1, チャンネル2, チャンネル3] if ch is not None]
+        raw_categories = [cat for cat in [カテゴリ1, カテゴリ2, カテゴリ3] if cat is not None]
+
+        if not raw_channels and not raw_categories:
+            current = self.bot.cmd_channel_settings.get(guild_id, {})
+            ch_ids = current.get("channels", [])
+            cat_ids = current.get("categories", [])
+
+            if not ch_ids and not cat_ids:
+                return await interaction.followup.send("ℹ️ 現在、コマンド制限は設定されていません。(すべてのチャンネルでコマンドが使用可能です)", ephemeral=True)
+
+            ch_mentions = [f"<#{cid}>" for cid in ch_ids]
+            cat_names = []
+            for cat_id in cat_ids:
+                cat_obj = interaction.guild.get_channel(cat_id)
+                cat_names.append(cat_obj.name if cat_obj else f"ID: {cat_id}")
+
+            embed = discord.Embed(title="⚙️ コマンド実行許可設定", color=0x87ceeb)
+            embed.add_field(name="許可チャンネル", value="\n".join(ch_mentions) if ch_mentions else "指定なし", inline=False)
+            embed.add_field(name="許可カテゴリ", value="\n".join(cat_names) if cat_names else "指定なし", inline=False)
+            return await interaction.followup.send(embed=embed, ephemeral=True)
+
+        valid_channels = list(set([ch.id for ch in raw_channels if isinstance(ch, (discord.TextChannel, discord.VoiceChannel, discord.StageChannel, discord.ForumChannel))]))
+        valid_categories = list(set([cat.id for cat in raw_categories if isinstance(cat, discord.CategoryChannel)]))
+
+        self.bot.cmd_channel_settings[guild_id] = {
+            "channels": valid_channels,
+            "categories": valid_categories
+        }
+        self.bot.save_cmd_settings(guild_id)
+
+        ch_mentions = [f"<#{cid}>" for cid in valid_channels]
+        cat_names = []
+        for cat_id in valid_categories:
+            cat_obj = interaction.guild.get_channel(cat_id)
+            cat_names.append(cat_obj.name if cat_obj else f"ID: {cat_id}")
+
+        msg = "✅ コマンド実行許可設定を保存しました！\n"
+        if ch_mentions:
+            msg += f"・**許可チャンネル**: {', '.join(ch_mentions)}\n"
+        if cat_names:
+            msg += f"・**許可カテゴリ**: {', '.join(cat_names)}\n"
+
+        await interaction.followup.send(msg, ephemeral=True)
+
     @app_commands.command(name="invite", description="まきぐもちゃんを別のサーバーに招待するリンクを表示します")
     async def invite(self, interaction: discord.Interaction):
         await interaction.response.defer()

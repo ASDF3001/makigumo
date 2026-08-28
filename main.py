@@ -24,6 +24,7 @@ LINES_DIR = "lines"
 class MakigumoBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=intents, chunk_guilds_at_startup=False)
+        self.cmd_channel_settings = {}
         self.channel_settings = {}
         self.economy = {}
         self.shop_items = {}
@@ -40,6 +41,7 @@ class MakigumoBot(commands.AutoShardedBot):
             c.execute("PRAGMA journal_mode=WAL")
             c.execute("CREATE TABLE IF NOT EXISTS economy (user_id TEXT PRIMARY KEY, data TEXT)")
             c.execute("CREATE TABLE IF NOT EXISTS channel_settings (guild_id TEXT PRIMARY KEY, channels TEXT)")
+            c.execute("CREATE TABLE IF NOT EXISTS command_channel_settings (guild_id TEXT PRIMARY KEY, allowed_channels TEXT, allowed_categories TEXT)")
             
             # JSONからの移行処理 (初回のみ)
             if os.path.exists(ECONOMY_FILE) and os.path.getsize(ECONOMY_FILE) > 0:
@@ -91,6 +93,14 @@ class MakigumoBot(commands.AutoShardedBot):
                     self.channel_settings[row[0]] = json.loads(row[1])
                 except Exception:
                     pass
+            for row in c.execute("SELECT guild_id, allowed_channels, allowed_categories FROM command_channel_settings"):
+                try:
+                    self.cmd_channel_settings[row[0]] = {
+                        "channels": json.loads(row[1]) if row[1] else [],
+                        "categories": json.loads(row[2]) if row[2] else []
+                    }
+                except Exception:
+                    pass
             
             self.levels = {}
             for row in c.execute("SELECT user_id, xp, level FROM levels"):
@@ -108,6 +118,21 @@ class MakigumoBot(commands.AutoShardedBot):
             c = conn.cursor()
             for gid, channels in self.channel_settings.items():
                 c.execute("INSERT OR REPLACE INTO channel_settings (guild_id, channels) VALUES (?, ?)", (gid, json.dumps(channels, ensure_ascii=False)))
+            conn.commit()
+
+    def save_cmd_settings(self, guild_id: str):
+        guild_id = str(guild_id)
+        settings = self.cmd_channel_settings.get(guild_id, {"channels": [], "categories": []})
+        with contextlib.closing(sqlite3.connect("database.db", timeout=30.0)) as conn, conn:
+            c = conn.cursor()
+            c.execute(
+                "INSERT OR REPLACE INTO command_channel_settings (guild_id, allowed_channels, allowed_categories) VALUES (?, ?, ?)",
+                (
+                    guild_id,
+                    json.dumps(settings.get("channels", []), ensure_ascii=False),
+                    json.dumps(settings.get("categories", []), ensure_ascii=False)
+                )
+            )
             conn.commit()
 
     def _save_economy_sync_task(self):
@@ -262,7 +287,50 @@ class MakigumoBot(commands.AutoShardedBot):
         await site.start()
         print(f"Web server started on port {port} for UptimeRobot!")
 
+    async def global_cmd_channel_check(self, interaction: discord.Interaction) -> bool:
+        if not interaction.guild:
+            return True
+
+        if interaction.command and interaction.command.name in ["cmd_setting", "setting"]:
+            return True
+
+        guild_id = str(interaction.guild_id)
+        cmd_settings = self.cmd_channel_settings.get(guild_id)
+
+        if not cmd_settings:
+            return True
+
+        allowed_channels = cmd_settings.get("channels", [])
+        allowed_categories = cmd_settings.get("categories", [])
+
+        if not allowed_channels and not allowed_categories:
+            return True
+
+        channel = interaction.channel
+        ch_id = interaction.channel_id
+        parent_id = getattr(channel, 'parent_id', None)
+        cat_id = getattr(channel, 'category_id', None)
+        if cat_id is None and hasattr(channel, 'category') and channel.category:
+            cat_id = channel.category.id
+
+        is_allowed = (
+            (ch_id and ch_id in allowed_channels) or
+            (parent_id and parent_id in allowed_channels) or
+            (cat_id and cat_id in allowed_categories)
+        )
+
+        if is_allowed:
+            return True
+
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "❌ このチャンネル（またはカテゴリ）ではコマンドの実行が許可されていません。",
+                ephemeral=True
+            )
+        return False
+
     async def setup_hook(self):
+        self.tree.interaction_check(self.global_cmd_channel_check)
         self.loop.create_task(self._web_server())
         # cogsフォルダ内の各ファイルを読み込む
         for cog in ['cogs.events', 'cogs.economy', 'cogs.roleplay', 'cogs.ai', 'cogs.leveling', 'cogs.billing', 'cogs.report', 'cogs.live_call', 'cogs.profile', 'cogs.notifications']:

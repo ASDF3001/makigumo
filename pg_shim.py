@@ -26,6 +26,9 @@ def _translate_query(query):
         elif "birthdays" in query:
             query = query.replace("INSERT OR REPLACE INTO birthdays", "INSERT INTO birthdays")
             query += " ON CONFLICT(user_id) DO UPDATE SET month=EXCLUDED.month, day=EXCLUDED.day, last_notified=EXCLUDED.last_notified"
+        elif "command_channel_settings" in query:
+            query = query.replace("INSERT OR REPLACE INTO command_channel_settings", "INSERT INTO command_channel_settings")
+            query += " ON CONFLICT(guild_id) DO UPDATE SET allowed_channels=EXCLUDED.allowed_channels, allowed_categories=EXCLUDED.allowed_categories"
         elif "channel_settings" in query:
             query = query.replace("INSERT OR REPLACE INTO channel_settings", "INSERT INTO channel_settings")
             query += " ON CONFLICT(guild_id) DO UPDATE SET channels=EXCLUDED.channels"
@@ -44,6 +47,9 @@ def _translate_query(query):
         query += " ON CONFLICT(user_id) DO NOTHING"
     if "INSERT OR IGNORE INTO channel_settings" in query:
         query = query.replace("INSERT OR IGNORE INTO channel_settings", "INSERT INTO channel_settings")
+        query += " ON CONFLICT(guild_id) DO NOTHING"
+    if "INSERT OR IGNORE INTO command_channel_settings" in query:
+        query = query.replace("INSERT OR IGNORE INTO command_channel_settings", "INSERT INTO command_channel_settings")
         query += " ON CONFLICT(guild_id) DO NOTHING"
         
     return query
