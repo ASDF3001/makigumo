@@ -12,6 +12,16 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
+# Cloudflare Workers などのプロキシ設定
+DISCORD_API_PROXY = os.getenv('DISCORD_API_PROXY')
+if DISCORD_API_PROXY:
+    proxy_base = DISCORD_API_PROXY.rstrip('/')
+    if not proxy_base.endswith('/api/v10') and not proxy_base.endswith('/api/v9'):
+        proxy_base += '/api/v10'
+    discord.http.Route.BASE = proxy_base
+    print(f"🌐 Discord API Proxy 有効化: {discord.http.Route.BASE}")
+
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
